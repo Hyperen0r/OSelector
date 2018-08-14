@@ -35,6 +35,7 @@ class ANIM_TYPE(Enum):
     KILLMOVE    = "^(km)"
     UNKNOWN     = ""
 
+
 class ANIM_OPTION(Enum):
     ACYCLIC         = "(?:,|-)a"
     ANIM_OBJ        = "(?:,|-)o"
@@ -48,23 +49,28 @@ class ANIM_OPTION(Enum):
     TRIGGER         = "(?:,|-)(T[^\/]*\/\d*\.\d*)"
     UNKNOWN         = ""
 
+
 class Animation():
 
     def __init__(self, type, options, animId, animFile, animObj):
-        self.animations         = []
-        self.animations_file    = []
-        self.animations_obj     = []
+        self.stages         = []
+        self.stages_file    = []
+        self.stages_obj     = []
 
         self.type = type
         self.options = options
-        self.animations.append([animId])
-        self.animations_file.append([animFile])
-        self.animations_obj.append([animObj])
+        self.stages.append([animId])
+        self.stages_file.append([animFile])
+        self.stages_obj.append([animObj])
+
+        self.name = self.stages[0][0].rsplit("_", 2)[0]
+
 
     def addStage(self, animId, animFile, animObj):
-        self.animations[0].append([animId])
-        self.animations_file[0].append([animFile])
-        self.animations_obj[0].append([animObj])
+        self.stages[0].append(animId)
+        self.stages_file[0].append(animFile)
+        self.stages_obj[0].append(animObj)
+
 
     @staticmethod
     def parseLine(line):
@@ -102,6 +108,7 @@ class Animation():
                     options.append( animOptions )
         return ANIM_OPTION.UNKNOWN
 
+
     def getBaseIdFromLine(self, line):
         baseId  = ""
         regexp  = re.compile(r"(\S*)_((?:a|A)\d_(?:s|S)\d)\b[^.]")
@@ -110,13 +117,34 @@ class Animation():
             baseId = found.group(1)
         return baseId
 
-class Example(QMainWindow):
+class AnimationModule():
+
+    def __init__(self, name):
+        self.name       = name
+        self.animations = []
+
+    def addAnimation(self, animation):
+        self.animations.append(animation)
+
+
+class AnimationPackage():
+
+    def __init__(self, name):
+        self.name       = name
+        self.modules = []
+
+    def addModule(self, module):
+        self.modules.append(module)
+
+
+class OSelectorWindow(QMainWindow):
 
     def __init__(self, argv):
         super().__init__()
 
         self.initUI()
         self.initSettings(argv)
+
 
     def initUI(self):
         self.setMinimumSize(QSize(900, 900))
@@ -190,15 +218,23 @@ class Example(QMainWindow):
             with open(self.config_path, 'w') as configFile:
                 self.config.write(configFile)
 
+
     def center(self):
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
+
     def scanFolder(self):
-        animations  = []
+        packages = []
+
         scanDir = QFileDialog.getExistingDirectory(self, 'Mod folder location', self.config.get("PATHS", "ModFolder"), QFileDialog.ShowDirsOnly)
+
+        previousPackage = ""
+
+        animPackage = None
+        animModule = None
 
         if scanDir:
 
@@ -209,9 +245,20 @@ class Example(QMainWindow):
                 for file in files:
                     if file.startswith("FNIS") and file.endswith("List.txt"):
                         animFile    = os.path.join(root, file)
-                        mod         = animFile.replace(scanDir + '\\', '').rsplit('\\',1)[1][5:-9].split("_")[0]
+                        package     = animFile.replace(scanDir + '\\', '').split('\\',1)[0]
+                        module      = animFile.replace(scanDir + '\\', '').rsplit('\\',1)[1][5:-9]
 
-                        logging.info("           Mod : " + mod)
+                        if package != previousPackage:
+                            previousPackage = package
+                            if animPackage != None:
+                                animPackage.modules.sort(key=lambda x: x.name, reverse=False)
+                            animPackage = AnimationPackage(package)
+                            packages.append(animPackage)
+                        animModule = AnimationModule(module)
+                        animPackage.addModule(animModule)
+
+                        logging.info("       Package : " + package)
+                        logging.info("        Module : " + module)
                         logging.info("       Reading : " + animFile)
 
                         with open(animFile, 'r') as f:
@@ -223,52 +270,68 @@ class Example(QMainWindow):
 
                                 if animType == ANIM_TYPE.BASIC:
                                     anim = Animation(animType, animOptions, animId, animFile, animObj)
-                                    animations.append(anim)
+                                    animModule.addAnimation(anim)
                                     logging.info("        Adding basic animation")
 
                                 elif animType == ANIM_TYPE.SEQUENCE:
                                     anim = Animation(animType, animOptions, animId, animFile, animObj)
-                                    animations.append(anim)
+                                    animModule.addAnimation(anim)
                                     logging.info("        Adding sequence animation")
 
                                 elif animType == ANIM_TYPE.ADDITIVE:
                                     anim.addStage(animId, animFile, animObj)
                                     logging.info("            Adding stage")
 
-        self.lcdAnimsFound.display(len(animations))
+                        animModule.animations.sort(key=lambda x: x.name, reverse=False)
 
-    def createTreeByMod(self, animations):
+        self.createTreeByMod(packages)
+        self.lcdAnimsFound.display(len(module))
 
-        previousMod = ""
-        section     = None
 
-        for animation in animations:
-            mod = animation.mod
+    def createTreeByMod(self, packages):
 
-            if mod != previousMod:
-                previousMod = mod
+        for package in packages:
+            section = QTreeWidgetItem(self.treeAnimFiles)
+            section.setText(0, package.name)
+            section.setFlags(section.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
 
-                section = QTreeWidgetItem(self.treeAnimFiles)
-                section.setText(0, mod)
-                section.setFlags(section.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
+            for module in package.modules:
+                moduleSection = QTreeWidgetItem(section)
+                moduleSection.setFlags(moduleSection.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
+                moduleSection.setText(0, module.name)
+                moduleSection.setCheckState(0, Qt.Checked)
 
-            animSection = QTreeWidgetItem(section)
-            animSection.setFlags(animSection.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
-            animSection.setText(0, animation.base_id)
-            animSection.setCheckState(0, Qt.Checked)
+                previousAnimation = ""
+                counter = 1
+                for animation in module.animations:
+                    if animation.name != previousAnimation:
+                        counter = 1
+                        previousAnimation = animation.name
+                        animSection = QTreeWidgetItem(moduleSection)
+                        animSection.setFlags(animSection.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
+                        animSection.setText(0, animation.name)
+                        animSection.setCheckState(0, Qt.Checked)
 
-            for i in range(animation.actorCount):
-                actorSection = QTreeWidgetItem(animSection)
-                actorSection.setFlags(actorSection.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
-                actorSection.setText(0, "A" + str(i+1))
-                actorSection.setCheckState(0, Qt.Checked)
+                    for i, stage in enumerate(animation.stages[0]):
+                        stageSection = QTreeWidgetItem(animSection)
+                        stageSection.setFlags(stageSection.flags() | Qt.ItemIsUserCheckable)
+                        stageSection.setText(0, "Stage " + str(counter))
+                        stageSection.setText(1, animation.stages_file[0][i])
+                        stageSection.setCheckState(0, Qt.Checked)
+                        counter += 1
 
-                for j in range(animation.stageCount):
-                    stageSection = QTreeWidgetItem(actorSection)
-                    stageSection.setFlags(stageSection.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
-                    stageSection.setText(0, "S" + str(j+1))
-                    stageSection.setText(1, animation.getAnimStageId(i,j))
-                    stageSection.setCheckState(0, Qt.Checked)
+        root = self.treeAnimFiles.invisibleRootItem()
+
+        # TODO Cleanup TreeView
+        """
+        for i in range(root.childCount()):
+            package = root.child(i)
+
+            for j in range(package.childCount()):
+                module = package.child(j)
+                if module.childCount() == 0:
+                    module.disable()
+        """
 
 
     def generatePlugin(self):
@@ -365,28 +428,31 @@ class Example(QMainWindow):
             file.write(data)
             print("Done !")
 
+
     def getCheckedAnimsInfo(self):
 
         checkedAnimsInfo  = []
 
         root = self.treeAnimFiles.invisibleRootItem()
         for i in range(root.childCount()):
-            modItem = root.child(i)
+            package = root.child(i)
 
-            for j in range(modItem.childCount()):
-                animItem = modItem.child(j)
+            for j in range(package.childCount()):
+                module = package.child(j)
 
-                for k in range(animItem.childCount()):
-                    actorItem   = animItem.child(k)
+                for k in range(module.childCount()):
+                    anim = module.child(k)
 
-                    for l in range(actorItem.childCount()):
-                        stageItem = actorItem.child(l)
+                    for l in range(anim.childCount()):
+                        stage = anim.child(l)
 
-                        animId      = stageItem.text(1)
-                        stageId     = stageItem.text(0)
-                        actorId     = actorItem.text(0)
+                        packageName = package.text(0)
+                        moduleName  = module.text(0)
+                        animName    = anim.text(0)
+                        stageName   = stage.text(0)
+                        animId      = stage.text(1)
 
-                        animInfo    = (animId, modItem.text(0), animItem.text(0), actorId, stageId)
+                        animInfo    = (animId, packageName, moduleName, animName, stageName)
                         checkedAnimsInfo.append(animInfo)
 
         return checkedAnimsInfo
@@ -401,5 +467,5 @@ class Example(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = Example(sys.argv)
+    window = OSelectorWindow(sys.argv)
     sys.exit(app.exec_())
