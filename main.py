@@ -15,23 +15,23 @@ from PyQt5.QtCore       import QSize, Qt
 
 class Animation():
 
-    def __init__(self, line):
+    def __init__(self, mod, line):
 
-        split   = line.split(" ")
+        self.mod        = mod
+        self.base_id    = self.getBaseIdFromLine(line)
+        self.author     = self.getAuthorFromId(self.base_id)
+        self.name       = self.getNameFromId(self.base_id)
 
-        self.base_id    = self.getBaseIdFromId(split[1])
-        self.type       = self.getTypeFromSymbol(split[0])
-        self.author     = self.getAuthorFromId(self.id)
-        self.name       = self.getNameFromId(self.id)
-        self.category   = self.getTypeFromSymbol(split[0])
+        if self.author == self.base_id:
+            self.author = self.mod
 
-        self.actorCount = 0
-        self.stageCount = 0
+        self.actorCount = 1
+        self.stageCount = 1
 
-    def getBaseIdFromId(self, id):
+    def getBaseIdFromLine(self, line):
         baseId  = ""
-        regexp  = re.compile(r"(\S*)_((?:a|A)\d_(?:s|S)\d)\b")
-        found   = regexp.search(id)
+        regexp  = re.compile(r"(\S*)_((?:a|A)\d_(?:s|S)\d)\b[^.]")
+        found   = regexp.search(line)
         if found:
             baseId = found.group(1)
         return baseId
@@ -48,8 +48,8 @@ class Animation():
         name = id.split("_")[0]
         return name
 
-    def isSameAnim(self, id):
-        if self.id.rsplit("_",2) == id.rsplit("_", 2):
+    def isSameAnim(self, line):
+        if self.base_id == self.getBaseIdFromLine(line):
             return True
         return False
 
@@ -57,10 +57,11 @@ class Animation():
         self.actorCount += 1
 
     def incrementStageCount(self):
-        self.stageCount += 1
+        if self.actorCount == 1:    # No need to increment stage count for other actor
+            self.stageCount += 1
 
     def getAnimStageId(self, actorIndex, stageIndex):
-        return self.base_id + "_" + "A" + actorIndex + "_" + "S" + stageIndex
+        return self.base_id + "_" + "A" + str(actorIndex) + "_" + "S" + str(stageIndex)
 
     def getAnimActorId(self, actorIndex):
         return [self.getAnimStageId(actorIndex, i) for i in self.stageCount]
@@ -68,6 +69,14 @@ class Animation():
     def getAllAnimId(self):
         return [self.getAnimActorId(i) for i in self.actorCount ]
 
+    def __str__(self):
+        return "[ANIM] Mod: " + self.mod + " Author:" + self.author + " BaseId: " + self.base_id + " Atotal: " + str(self.actorCount) + " Stotal: " + str(self.stageCount)
+
+    @staticmethod
+    def isValidLine(line):
+        if ".hkx" in line:
+            return True
+        return False
 
 
 
@@ -155,72 +164,75 @@ class Example(QMainWindow):
         self.move(qr.topLeft())
 
     def scanFolder(self):
-        animFiles = []
+        animations  = []
         scanDir = QFileDialog.getExistingDirectory(self, 'Mod folder location', self.config.get("PATHS", "ModFolder"), QFileDialog.ShowDirsOnly)
-
-        previousParent  = ""
-        section         = None
-        brushS          = QBrush(Qt.blue)
 
         if scanDir:
             for root, dirs, files in os.walk(scanDir):
                 for file in files:
                     if file.startswith("FNIS") and file.endswith("List.txt"):
-                        animFile = os.path.join(root, file)
-                        parentName  = animFile.replace(scanDir + '\\', '').split('\\',1)[0]
-                        fileName    = animFile.replace(scanDir + '\\', '').rsplit('\\',1)[1]
-
-                        if parentName != previousParent:
-                            section = QTreeWidgetItem(self.treeAnimFiles)
-                            section.setText(0, parentName)
-                            section.setFlags(section.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
-                            previousParent = parentName
+                        animFile    = os.path.join(root, file)
+                        mod         = animFile.replace(scanDir + '\\', '').rsplit('\\',1)[1][5:-9].split("_")[0]
 
                         with open(animFile, 'r') as f:
-                            animSection = None
+                            anim        = None
                             for line in f:
-                                if line.startswith('s'):
-                                    regexp = re.compile(r"(\S*_(a|A)\d)_(s|S)\d")
-                                    found = regexp.search(line)
-                                    if found:
-                                        animName = found.group(1)
+                                if Animation.isValidLine(line):
+                                    if anim == None or not anim.isSameAnim(line):
+                                        if line.startswith("s"):
+                                            anim = Animation(mod, line)
+                                            animations.append(anim)
 
-                                        animSection = QTreeWidgetItem(section)
-                                        animSection.setFlags(animSection.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
-                                        animSection.setText(0, animName)
-                                        animSection.setCheckState(0, Qt.Checked)
+                                    else:
+                                        if line.startswith("s"):
+                                            anim.incrementActorCount()
+                                        elif line.startswith("+") :
+                                            anim.incrementStageCount()
 
-                                        section.setForeground(0, brushS)
-                                        animSection.setForeground(0, brushS)
+        self.lcdAnimsFound.display(len(animations))
+        self.createTreeByMod(animations)
 
-                                        animStageSection = QTreeWidgetItem(animSection)
-                                        animStageSection.setFlags(animSection.flags() | Qt.ItemIsUserCheckable)
-                                        animStageSection.setText(0, found.group(3) + '1')
-                                        animStageSection.setCheckState(0, Qt.Checked)
+    def createTreeByMod(self, animations):
 
-                                elif line.startswith('+'):
-                                    regexp = re.compile(r"\S*_(a|A)\d_((s|S)\d)")
-                                    found = regexp.search(line)
-                                    if found:
-                                        stageIndex = found.group(2)
+        previousMod = ""
+        section     = None
 
-                                        animStageSection = QTreeWidgetItem(animSection)
-                                        animStageSection.setFlags(animSection.flags() | Qt.ItemIsUserCheckable)
-                                        animStageSection.setText(0, stageIndex)
-                                        animStageSection.setCheckState(0, Qt.Checked)
+        for animation in animations:
+            mod = animation.mod
 
-                        animFiles.append(animFile)
-                        self.lcdAnimsFound.display(len(animFiles))
+            if mod != previousMod:
+                previousMod = mod
 
-        self.buttonScan.setDefault(False)
-        self.buttonGenerate.setDefault(True)
+                section = QTreeWidgetItem(self.treeAnimFiles)
+                section.setText(0, mod)
+                section.setFlags(section.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
+
+            animSection = QTreeWidgetItem(section)
+            animSection.setFlags(animSection.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
+            animSection.setText(0, animation.base_id)
+            animSection.setCheckState(0, Qt.Checked)
+
+            for i in range(animation.actorCount):
+                actorSection = QTreeWidgetItem(animSection)
+                actorSection.setFlags(actorSection.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
+                actorSection.setText(0, "A" + str(i+1))
+                actorSection.setCheckState(0, Qt.Checked)
+
+                for j in range(animation.stageCount):
+                    stageSection = QTreeWidgetItem(actorSection)
+                    stageSection.setFlags(stageSection.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
+                    stageSection.setText(0, "S" + str(j+1))
+                    stageSection.setText(1, animation.getAnimStageId(i,j))
+                    stageSection.setCheckState(0, Qt.Checked)
+
 
     def generatePlugin(self):
         print("generating plugin ...")
 
+        """
         header = ET.Element("global")
         header.set("id", self.config.get("PLUGIN", "Name"))
-
+        
         folderStyle = ET.Element("folderStyle")
         folderStyle.set("fc", "FFFFFF")
         folderStyle.set("h", "h_bigdot_op")
@@ -244,6 +256,7 @@ class Example(QMainWindow):
         entryStyle.set("sth", "3")
         entryStyle.set("sb", "e85670")
         entryStyle.set("slc", "FFFFFF")
+        """
 
 
         folder0 = ET.Element("folder0")
@@ -288,18 +301,25 @@ class Example(QMainWindow):
         pluginPath = self.config.get("PATHS", "ModFolder") + "/" + self.config.get("PLUGIN", "Name") + "/" + self.config.get("PATHS", "Plugin")
         self.create_dir(pluginPath)
 
-        with open(pluginPath + self.config.get("PLUGIN", "Name") + ".xml", "w") as file:
+        # File allowing the plugin to be recognized by OSA
+        pluginInstallPath = self.config.get("PATHS", "ModFolder") + "/" + self.config.get("PLUGIN", "Name") + "/" + self.config.get("PATHS", "installPlugin") + "/"
+        self.create_dir(pluginInstallPath)
+        file = open( pluginInstallPath + "/" + self.config.get("PLUGIN", "Name") + ".osplug", "w")
+
+        with open(pluginPath + self.config.get("PLUGIN", "osplug") + ".myo", "w") as file:
+            """
             data = ET.tostring(header, "unicode")
             file.write(data)
             data = ET.tostring(folderStyle, "unicode")
             file.write(data)
             data = ET.tostring(entryStyle, "unicode")
             file.write(data)
+            """
             data = ET.tostring(folder0, "unicode")
             file.write(data)
-        print("Done !")
+            print("Done !")
 
-    """
+        """
         :return
             checkedAnimsInfo    - Animations' info of all checked item
                 sectionName     - (generally author's name) Used to gather animations in the same folder
@@ -314,29 +334,20 @@ class Example(QMainWindow):
         for i in range(root.childCount()):
             modItem = root.child(i)
 
-            if modItem.childCount() == 0:
-                modItem.setDisabled(True)
+            for j in range(modItem.childCount()):
+                animItem = modItem.child(j)
 
-            else:
-                for j in range(modItem.childCount()):
-                    animItem = modItem.child(j)
+                for k in range(animItem.childCount()):
+                    actorItem   = animItem.child(k)
 
-                    for k in range(animItem.childCount()):
-                        stageItem   = animItem.child(k)
-                        animId      = animItem.text(0) + "_" + stageItem.text(0)
-                        splitAnimId = animId.split("_")
-                        stageId     = splitAnimId[-1]
-                        actorId     = splitAnimId[-2]
+                    for l in range(actorItem.childCount()):
+                        stageItem = actorItem.child(l)
 
-                        # Handle Anim Id like NAME_ACTOR_STAGE
-                        if len(splitAnimId) == 3:
-                            animName    = splitAnimId[0]
-                            sectionName = modItem.text(0)
-                        else:
-                            animName    = '_'.join(splitAnimId[1:-2])
-                            sectionName = splitAnimId[0]
+                        animId      = stageItem.text(1)
+                        stageId     = stageItem.text(0)
+                        actorId     = actorItem.text(0)
 
-                        animInfo    = (animId, sectionName, animName, actorId, stageId)
+                        animInfo    = (animId, modItem.text(0), animItem.text(0), actorId, stageId)
                         checkedAnimsInfo.append(animInfo)
 
         return checkedAnimsInfo
