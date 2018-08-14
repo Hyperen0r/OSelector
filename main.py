@@ -1,10 +1,19 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
+# ----------------------------
+# ---------- IMPORT ----------
+# ----------------------------
+import os
+import re
+import sys
+import logging
+import configparser
 
-import sys, configparser, os, re
+
 import xml.etree.ElementTree as ET
 
+from enum               import Enum
 from PyQt5.QtWidgets    import (QApplication, QWidget, QToolTip,
                                 QPushButton, QMessageBox, QDesktopWidget,
                                 QMainWindow, QFileDialog, QHBoxLayout,
@@ -13,20 +22,85 @@ from PyQt5.QtWidgets    import (QApplication, QWidget, QToolTip,
 from PyQt5.QtGui        import QIcon, QFont, QBrush, QColor
 from PyQt5.QtCore       import QSize, Qt
 
+# -----------------------------
+# ----------  CLASSES----------
+# -----------------------------
+class ANIM_TYPE(Enum):
+    BASIC       = "^(b)"
+    ANIM_OBJ    = "^(fu|fuo)"
+    SEQUENCE    = "^(s|so)"
+    ADDITIVE    = "^(\+)"
+    OFFSET      = "^(ofa)"
+    PAIRED      = "^(pa)"
+    KILLMOVE    = "^(km)"
+    UNKNOWN     = ""
+
+class ANIM_OPTION(Enum):
+    ACYCLIC         = "(?:,|-)a"
+    ANIM_OBJ        = "(?:,|-)o"
+    TRANSITION      = "(?:,|-)Tn"
+    HEAD_TRACKING   = "(?:,|-)h"
+    BLEND_TIME      = "(?:,|-)(B\d*\.\d*)"
+    KNOWN           = "(?:,|-)k"
+    BSA             = "(?:,|-)bsa"
+    STICKY_AO       = "(?:,|-)st"
+    DURATION        = '(?:,|-)(D\d*\.\d*)'
+    TRIGGER         = "(?:,|-)(T[^\/]*\/\d*\.\d*)"
+    UNKNOWN         = ""
+
 class Animation():
 
-    def __init__(self, mod, line):
+    def __init__(self, type, options, animId, animFile, animObj):
+        self.animations         = []
+        self.animations_file    = []
+        self.animations_obj     = []
 
-        self.mod        = mod
-        self.base_id    = self.getBaseIdFromLine(line)
-        self.author     = self.getAuthorFromId(self.base_id)
-        self.name       = self.getNameFromId(self.base_id)
+        self.type = type
+        self.options = options
+        self.animations.append([animId])
+        self.animations_file.append([animFile])
+        self.animations_obj.append([animObj])
 
-        if self.author == self.base_id:
-            self.author = self.mod
+    def addStage(self, animId, animFile, animObj):
+        self.animations[0].append([animId])
+        self.animations_file[0].append([animFile])
+        self.animations_obj[0].append([animObj])
 
-        self.actorCount = 1
-        self.stageCount = 1
+    @staticmethod
+    def parseLine(line):
+        # See FNIS_FNISBase_List.txt for more information (in FNIS  Behavior <Version>/Meshes/Character/animations/FNISBase
+        regexp  = re.compile(r"^(\S*)(?: -(\S*))? (\S*) (\S*)((?:\s(?:\S*))*)")
+        found   = regexp.search(line)
+        if found:
+            type        = found.group(1)    # Single word (s + b ...)
+            options     = found.group(2)    # o,a,Tn,B.2, ...
+            animId      = found.group(3)    # ANIM_ID_ ...
+            animFile    = found.group(4)    # <path/to/file>.hkx
+            animObj     = found.group(5)    # Chair Ball ...
+            return Animation.getAnimTypeFromString(type), Animation.getOptionsFromString(options), animId, animFile, animObj
+        return ANIM_TYPE.UNKNOWN, [], "", "", ""
+
+
+    @staticmethod
+    def getAnimTypeFromString(string):
+        for animType in ANIM_TYPE:
+            regexp  = re.compile(animType.value)
+            found   = regexp.search(string)
+            if found:
+                return animType
+        return ANIM_TYPE.UNKNOWN
+
+
+    @staticmethod
+    def getOptionsFromString(string):
+        if string:
+            options = []
+            for animOptions in ANIM_OPTION:
+                regexp  = re.compile(animOptions.value)
+                found   = regexp.search(string)
+                if found:
+                    options.append( animOptions )
+        return ANIM_OPTION.UNKNOWN
 
     def getBaseIdFromLine(self, line):
         baseId  = ""
@@ -35,50 +109,6 @@ class Animation():
         if found:
             baseId = found.group(1)
         return baseId
-
-    def getTypeFromSymbol(self, symbol):
-        type = None
-        return type
-
-    def getAuthorFromId(self, id):
-        author = id.split("_")[0]
-        return author
-
-    def getNameFromId(self, id):
-        name = id.split("_")[0]
-        return name
-
-    def isSameAnim(self, line):
-        if self.base_id == self.getBaseIdFromLine(line):
-            return True
-        return False
-
-    def incrementActorCount(self):
-        self.actorCount += 1
-
-    def incrementStageCount(self):
-        if self.actorCount == 1:    # No need to increment stage count for other actor
-            self.stageCount += 1
-
-    def getAnimStageId(self, actorIndex, stageIndex):
-        return self.base_id + "_" + "A" + str(actorIndex) + "_" + "S" + str(stageIndex)
-
-    def getAnimActorId(self, actorIndex):
-        return [self.getAnimStageId(actorIndex, i) for i in self.stageCount]
-
-    def getAllAnimId(self):
-        return [self.getAnimActorId(i) for i in self.actorCount ]
-
-    def __str__(self):
-        return "[ANIM] Mod: " + self.mod + " Author:" + self.author + " BaseId: " + self.base_id + " Atotal: " + str(self.actorCount) + " Stotal: " + str(self.stageCount)
-
-    @staticmethod
-    def isValidLine(line):
-        if ".hkx" in line:
-            return True
-        return False
-
-
 
 class Example(QMainWindow):
 
@@ -131,12 +161,15 @@ class Example(QMainWindow):
 
         self.show()
 
+
     def initSettings(self, argv):
         self.path           = argv[0].rsplit('/', 1)[0]
-        self.config_path    = self.path + "/config.cfg"
 
+        self.config_path    = self.path + "/config.cfg"
         self.config         = configparser.ConfigParser()
         self.config.read(self.config_path)
+
+        logging.basicConfig(filename=self.config.get("LOG", "name"), level=logging.DEBUG, format='[%(levelname)s] : %(message)s')
 
         if self.config.getboolean("CONFIG", "bFirstTime"):
 
@@ -168,29 +201,41 @@ class Example(QMainWindow):
         scanDir = QFileDialog.getExistingDirectory(self, 'Mod folder location', self.config.get("PATHS", "ModFolder"), QFileDialog.ShowDirsOnly)
 
         if scanDir:
+
+            logging.info("=============== SCANNING ===============")
+            logging.info("Scanning directory : " + scanDir)
+
             for root, dirs, files in os.walk(scanDir):
                 for file in files:
                     if file.startswith("FNIS") and file.endswith("List.txt"):
                         animFile    = os.path.join(root, file)
                         mod         = animFile.replace(scanDir + '\\', '').rsplit('\\',1)[1][5:-9].split("_")[0]
 
-                        with open(animFile, 'r') as f:
-                            anim        = None
-                            for line in f:
-                                if Animation.isValidLine(line):
-                                    if anim == None or not anim.isSameAnim(line):
-                                        if line.startswith("s"):
-                                            anim = Animation(mod, line)
-                                            animations.append(anim)
+                        logging.info("           Mod : " + mod)
+                        logging.info("       Reading : " + animFile)
 
-                                    else:
-                                        if line.startswith("s"):
-                                            anim.incrementActorCount()
-                                        elif line.startswith("+") :
-                                            anim.incrementStageCount()
+                        with open(animFile, 'r') as f:
+                            anim = None
+                            for line in f:
+                                animType, animOptions, animId, animFile, animObj = Animation.parseLine(line)
+
+                                logging.debug("        animType : " + animType.name + " || Line : " + line.strip())
+
+                                if animType == ANIM_TYPE.BASIC:
+                                    anim = Animation(animType, animOptions, animId, animFile, animObj)
+                                    animations.append(anim)
+                                    logging.info("        Adding basic animation")
+
+                                elif animType == ANIM_TYPE.SEQUENCE:
+                                    anim = Animation(animType, animOptions, animId, animFile, animObj)
+                                    animations.append(anim)
+                                    logging.info("        Adding sequence animation")
+
+                                elif animType == ANIM_TYPE.ADDITIVE:
+                                    anim.addStage(animId, animFile, animObj)
+                                    logging.info("            Adding stage")
 
         self.lcdAnimsFound.display(len(animations))
-        self.createTreeByMod(animations)
 
     def createTreeByMod(self, animations):
 
@@ -227,7 +272,18 @@ class Example(QMainWindow):
 
 
     def generatePlugin(self):
-        print("generating plugin ...")
+        logging.info("=============== GENERATING PLUGIN ===============")
+
+        pluginPath          = self.config.get("PATHS", "ModFolder") + "/" + self.config.get("PLUGIN", "Name") + "/" + self.config.get("PATHS", "Plugin") + "/"
+        pluginInstallPath   = self.config.get("PATHS", "ModFolder") + "/" + self.config.get("PLUGIN", "Name") + "/" + self.config.get("PATHS", "installPlugin") + "/"
+
+        self.create_dir(pluginPath)
+        self.create_dir(pluginInstallPath)
+
+        logging.info("Plugin destination : " + pluginPath)
+
+        # File allowing the plugin to be recognized by OSA
+        file = open( pluginInstallPath + "/" + self.config.get("PLUGIN", "osplug") + ".osplug", "w")
 
         """
         header = ET.Element("global")
@@ -257,7 +313,6 @@ class Example(QMainWindow):
         entryStyle.set("sb", "e85670")
         entryStyle.set("slc", "FFFFFF")
         """
-
 
         folder0 = ET.Element("folder0")
         folder0.set("n", self.config.get("PLUGIN", "name" ) )
@@ -297,15 +352,6 @@ class Example(QMainWindow):
             entry.set("id", animId)
             entry.set("i", self.config.get("PLUGIN", "stageLevelImage") )
 
-        print("saving plugin to file")
-        pluginPath = self.config.get("PATHS", "ModFolder") + "/" + self.config.get("PLUGIN", "Name") + "/" + self.config.get("PATHS", "Plugin")
-        self.create_dir(pluginPath)
-
-        # File allowing the plugin to be recognized by OSA
-        pluginInstallPath = self.config.get("PATHS", "ModFolder") + "/" + self.config.get("PLUGIN", "Name") + "/" + self.config.get("PATHS", "installPlugin") + "/"
-        self.create_dir(pluginInstallPath)
-        file = open( pluginInstallPath + "/" + self.config.get("PLUGIN", "Name") + ".osplug", "w")
-
         with open(pluginPath + self.config.get("PLUGIN", "osplug") + ".myo", "w") as file:
             """
             data = ET.tostring(header, "unicode")
@@ -319,13 +365,6 @@ class Example(QMainWindow):
             file.write(data)
             print("Done !")
 
-        """
-        :return
-            checkedAnimsInfo    - Animations' info of all checked item
-                sectionName     - (generally author's name) Used to gather animations in the same folder
-                animName        - Used to display animation's name
-                id              - Animation ID used to retrieve corresponding animation
-    """
     def getCheckedAnimsInfo(self):
 
         checkedAnimsInfo  = []
@@ -352,24 +391,13 @@ class Example(QMainWindow):
 
         return checkedAnimsInfo
 
-    def closeEvent(self, event):
-        reply = QMessageBox.question(self, 'Message',
-                                     "Are you sure to quit?", QMessageBox.Yes |
-                                     QMessageBox.No, QMessageBox.Yes)
-
-        if reply == QMessageBox.Yes:
-            event.accept()
-        else:
-            event.ignore()
-
     def create_dir(self, path):
         # Prevent execution if the library already exists
         if (os.path.exists(path)):
-            print("WARNING: " + path + " already exists")
+            logging.info("Path already exists : " + path)
         else:
-            print("Creating new directory: " + path)
+            logging.info("Creating new directory: " + path)
             os.makedirs(path)
-
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
