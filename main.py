@@ -18,7 +18,8 @@ from PyQt5.QtWidgets    import (QApplication, QWidget, QToolTip,
                                 QPushButton, QMessageBox, QDesktopWidget,
                                 QMainWindow, QFileDialog, QHBoxLayout,
                                 QVBoxLayout, QLCDNumber, QLabel, QListWidget,
-                                QTreeWidget, QTreeWidgetItem, QProgressBar)
+                                QTreeWidget, QTreeWidgetItem, QProgressBar,
+                                QGroupBox, QFontDialog)
 from PyQt5.QtGui        import QIcon, QFont, QBrush, QColor
 from PyQt5.QtCore       import QSize, Qt
 
@@ -146,6 +147,15 @@ class OSelectorWindow(QMainWindow):
         self.initSettings(argv)
 
 
+    def getTitleFont(self):
+        return QFont("Bahnschrift", 13, QFont.Bold)
+
+    def getNormalFont(self):
+        return QFont("Bahnschrift", 9, QFont.Normal)
+
+    def getButtonStyleSheet(self):
+        return "padding: 10px"
+
     def initUI(self):
         self.setMinimumSize(QSize(900, 900))
         self.center()
@@ -158,15 +168,21 @@ class OSelectorWindow(QMainWindow):
         self.centralWidget.setLayout(self.mainLayout)
 
         # ----- FIRST ROW : Scanning for animations files -----
-        self.buttonScan          = QPushButton("Scan for animations", self)
-        self.buttonScan.setDefault(True)
-        self.lcdAnimsFound  = QLCDNumber(self)
+        self.groupBoxScanning = QGroupBox("STEP I - Scan")
+        self.groupBoxScanning.setFont(self.getTitleFont())
+        self.groupBoxScanning.setAlignment(Qt.AlignHCenter)
 
-        self.buttonScan.setFont(QFont("Times", 15, QFont.Bold))
+        self.buttonScan = QPushButton("Scan for animations", self)
+        self.buttonScan.setFont(self.getNormalFont())
         self.buttonScan.setMinimumSize(self.buttonScan.minimumSizeHint())
+        self.buttonScan.setStyleSheet(self.getButtonStyleSheet())
         self.buttonScan.clicked.connect(self.scanFolder)
 
-        labelAnimsFound = QLabel("Animations files found : ")
+        labelAnimsFound = QLabel("Animations found : ")
+        labelAnimsFound.setFont(self.getNormalFont())
+
+        self.lcdAnimsFound  = QLCDNumber(self)
+        self.lcdAnimsFound.setSegmentStyle(2)
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.buttonScan)
@@ -174,19 +190,48 @@ class OSelectorWindow(QMainWindow):
         hbox.addWidget(labelAnimsFound)
         hbox.addWidget(self.lcdAnimsFound)
 
-        self.mainLayout.addItem(hbox)
+        self.groupBoxScanning.setLayout(hbox)
+        self.mainLayout.addWidget(self.groupBoxScanning)
 
         # ----- SECOND ROW : List animations files -----
+        self.groupBoxAnim = QGroupBox("STEP II - Select")
+        self.groupBoxAnim.setFont(self.getTitleFont())
+        self.groupBoxAnim.setAlignment(Qt.AlignHCenter)
+
         self.treeAnimFiles = QTreeWidget();
         self.treeAnimFiles.header().hide()
 
-        self.mainLayout.addWidget(self.treeAnimFiles)
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.treeAnimFiles)
+
+        self.groupBoxAnim.setLayout(hbox)
+        self.mainLayout.addWidget(self.groupBoxAnim)
 
         # ----- THIRD ROW : Generate plugin -----
+        self.groupBoxGenerate = QGroupBox("STEP III - Generate")
+        self.groupBoxGenerate.setFont(self.getTitleFont())
+        self.groupBoxGenerate.setAlignment(Qt.AlignHCenter)
+
         self.buttonGenerate = QPushButton("Generate Plugin", self)
+        self.buttonGenerate.setFont(self.getNormalFont())
+        self.buttonGenerate.setMinimumSize(self.buttonGenerate.minimumSizeHint())
+        self.buttonGenerate.setStyleSheet(self.getButtonStyleSheet())
         self.buttonGenerate.clicked.connect(self.generatePlugin)
 
-        self.mainLayout.addWidget(self.buttonGenerate)
+        labelAnimsChecked = QLabel("Animations checked : ")
+        labelAnimsChecked.setFont(self.getNormalFont())
+
+        self.lcdAnimsChecked  = QLCDNumber(self)
+        self.lcdAnimsChecked.setSegmentStyle(2)
+
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.buttonGenerate)
+        hbox.addStretch(1)
+        hbox.addWidget(labelAnimsChecked)
+        hbox.addWidget(self.lcdAnimsChecked)
+
+        self.groupBoxGenerate.setLayout(hbox)
+        self.mainLayout.addWidget(self.groupBoxGenerate)
 
         # ----- FOURTH ROW : Progress Bar -----
         self.progressBar = QProgressBar(self)
@@ -233,6 +278,10 @@ class OSelectorWindow(QMainWindow):
         self.move(qr.topLeft())
 
 
+    def displayLCDAnimChecked(self):
+        self.lcdAnimsChecked.display(len(self.getCheckedAnimsInfo()))
+
+
     def scanFolder(self):
 
         self.progressBar.setRange(0, 0)
@@ -260,13 +309,10 @@ class OSelectorWindow(QMainWindow):
                         module      = animFile.replace(scanDir + '\\', '').rsplit('\\',1)[1][5:-9]
 
                         if package != previousPackage:
-                            previousPackage = package
                             if animPackage != None:
                                 animPackage.modules.sort(key=lambda x: x.name, reverse=False)
                             animPackage = AnimationPackage(package)
-                            packages.append(animPackage)
                         animModule = AnimationModule(module)
-                        animPackage.addModule(animModule)
 
                         logging.info("       Package : " + package)
                         logging.info("        Module : " + module)
@@ -298,11 +344,21 @@ class OSelectorWindow(QMainWindow):
 
                         animModule.animations.sort(key=lambda x: x.name, reverse=False)
 
+                        if animModule.animations:
+                            animPackage.addModule(animModule)
+                            if package != previousPackage:
+                                previousPackage = package
+                                packages.append(animPackage)
+
         self.createTreeByMod(packages)
+        self.treeAnimFiles.itemClicked.connect(self.displayLCDAnimChecked)
         self.lcdAnimsFound.display(counter)
+        self.displayLCDAnimChecked()
 
 
     def createTreeByMod(self, packages):
+
+        self.treeAnimFiles.clear()
 
         for package in packages:
             section = QTreeWidgetItem(self.treeAnimFiles)
@@ -334,28 +390,30 @@ class OSelectorWindow(QMainWindow):
                         stageSection.setCheckState(0, Qt.Checked)
                         counter += 1
 
+
+
+
+        """
         root = self.treeAnimFiles.invisibleRootItem()
         for i in range(root.childCount()):
             package = root.child(i)
-
-            if package:
-                for j in range(package.childCount()):
-                    module = package.child(j)
-
-                    if module:
-                        for k in range(module.childCount()):
-                            anim = module.child(j)
-
-                            if anim and anim.childCount  == 0:
-                                module.removeChild(anim)
-
-                        if module.childCount() == 0:
-                            package.removeChild(module)
-
-                if package.childCount() == 0:
-                    root.removeChild(package)
+            print(root.childCount())
+            print(i)
+            print(package)
+            for j in range(package.childCount()):
+                module = package.child(j)
+                for k in range(module.childCount()):
+                    anim = module.child(k)
+                    if anim.childCount() == 0:
+                        module.removeChild(anim)
+                if module.childCount() == 0:
+                   package.removeChild(module)
+            if package.childCount() == 0:
+                root.removeChild(package)
+        """
 
         self.progressBar.setRange(0, 1)
+
 
     def generatePlugin(self):
         logging.info("=============== GENERATING PLUGIN ===============")
@@ -431,6 +489,7 @@ class OSelectorWindow(QMainWindow):
         animFolderOffset    = 0
         stageCounter        = 0
         stageSetCounter     = 0
+        minusOffset         = 0
 
         for animId, package, module, anim, stage in animations:
 
@@ -446,7 +505,7 @@ class OSelectorWindow(QMainWindow):
                     packageCounter     = 0
 
                     packageSetFolder = ET.SubElement(root, "folder1")
-                    packageSetFolder.set("n", "Set " + str(packageSetCounter))
+                    packageSetFolder.set("n", "Package Set " + str(packageSetCounter))
                     packageSetFolder.set("i", self.config.get("PLUGIN", "setFolderImage") )
 
             if package != previousPackage:
@@ -481,7 +540,7 @@ class OSelectorWindow(QMainWindow):
                     moduleCounter     = 0
 
                     moduleSetFolder = ET.SubElement(packageFolder, "folder" + str(2 + packageFolderOffset))
-                    moduleSetFolder.set("n", "Set " + str(moduleSetCounter))
+                    moduleSetFolder.set("n", "Module Set " + str(moduleSetCounter))
                     moduleSetFolder.set("i", self.config.get("PLUGIN", "setFolderImage") )
 
             if module != previousModule:
@@ -513,20 +572,26 @@ class OSelectorWindow(QMainWindow):
                     animCounter     = 0
 
                     animSetFolder = ET.SubElement(moduleFolder, "folder" + str(3 + packageFolderOffset + moduleFolderOffset))
-                    animSetFolder.set("n", "Set " + str(animSetCounter))
+                    animSetFolder.set("n", "Anim Set " + str(animSetCounter))
                     animSetFolder.set("i", self.config.get("PLUGIN", "setFolderImage") )
 
             if anim != previousAnim:
                 stageCounter        = 0
                 stageSetCounter     = 0
 
-                if nbOfAnimSets > 1:
-                    animFolder = ET.SubElement(animSetFolder, "folder" + str(3 + packageFolderOffset + moduleFolderOffset + animFolderOffset))
-                else:
-                    animFolder = ET.SubElement(moduleFolder, "folder" + str(3 + packageFolderOffset + moduleFolderOffset + animFolderOffset))
+                nbStages = self.getNumberOfCheckedStageFromAnim(package, module, anim)
 
-                animFolder.set("n", anim)
-                animFolder.set("i", self.config.get("PLUGIN", "animFolderImage") )
+                if nbStages > 1:
+                    if nbOfAnimSets > 1:
+                        animFolder = ET.SubElement(animSetFolder, "folder" + str(3 + packageFolderOffset + moduleFolderOffset + animFolderOffset))
+                    else:
+                        animFolder = ET.SubElement(moduleFolder, "folder" + str(3 + packageFolderOffset + moduleFolderOffset + animFolderOffset))
+
+                    animFolder.set("n", anim)
+                    animFolder.set("i", self.config.get("PLUGIN", "animFolderImage") )
+                else:
+                    minusOffset = 1
+
                 animCounter +=1
                 previousAnim = anim
 
@@ -540,14 +605,23 @@ class OSelectorWindow(QMainWindow):
                     stageCounter    = 0
 
                     stageSetFolder = ET.SubElement(animFolder, "folder" + str(4 + packageFolderOffset + moduleFolderOffset + animFolderOffset))
-                    stageSetFolder.set("n", "Set " + str(stageSetCounter))
+                    stageSetFolder.set("n", "Stage Set " + str(stageSetCounter))
                     stageSetFolder.set("i", self.config.get("PLUGIN", "setFolderImage") )
 
                 entry = ET.SubElement(stageSetFolder, "entry")
+                entry.set("n", stage)
             else:
-                entry = ET.SubElement(animFolder, "entry")
+                if minusOffset:
+                    if animFolderOffset:
+                        entry = ET.SubElement(animSetFolder, "entry")
+                    else:
+                        entry = ET.SubElement(moduleFolder, "entry")
+                    minusOffset = 0
+                    entry.set("n", animId)
+                else:
+                    entry = ET.SubElement(animFolder, "entry")
+                    entry.set("n", stage)
 
-            entry.set("n", stage)
             entry.set("i", self.config.get("PLUGIN", "stageFolderImage") )
             entry.set("id", animId)
             stageCounter += 1
@@ -565,12 +639,13 @@ class OSelectorWindow(QMainWindow):
             file.write(data)
             print("Done !")
 
+
     def getNumberOfCheckedPackage(self):
         root    = self.treeAnimFiles.invisibleRootItem()
         count   = 0
 
         for i in range(root.childCount()):
-            if root.child(i).checkState(0) == Qt.Checked:
+            if root.child(i).checkState(0) != Qt.Unchecked:
                 count += 1
 
         return count
@@ -585,7 +660,7 @@ class OSelectorWindow(QMainWindow):
             if package.text(0) == packageName:
 
                 for j in range(package.childCount()):
-                    if package.child(j).checkState(0) == Qt.Checked:
+                    if package.child(j).checkState(0) != Qt.Unchecked:
                         count += 1
         return count
 
@@ -603,7 +678,7 @@ class OSelectorWindow(QMainWindow):
                     if module.text(0) == moduleName:
 
                         for k in range(module.childCount()):
-                            if module.child(k).checkState(0) == Qt.Checked:
+                            if module.child(k).checkState(0) != Qt.Unchecked:
                                 count += 1
         return count
 
@@ -637,25 +712,28 @@ class OSelectorWindow(QMainWindow):
         root = self.treeAnimFiles.invisibleRootItem()
         for i in range(root.childCount()):
             package = root.child(i)
+            if package.checkState(0) != Qt.Unchecked:
 
-            for j in range(package.childCount()):
-                module = package.child(j)
+                for j in range(package.childCount()):
+                    module = package.child(j)
+                    if module.checkState(0) != Qt.Unchecked:
 
-                for k in range(module.childCount()):
-                    anim = module.child(k)
+                        for k in range(module.childCount()):
+                            anim = module.child(k)
+                            if anim.checkState(0) != Qt.Unchecked:
 
-                    for l in range(anim.childCount()):
-                        stage = anim.child(l)
+                                for l in range(anim.childCount()):
+                                    stage = anim.child(l)
 
-                        packageName = package.text(0)
-                        moduleName  = module.text(0)
-                        animName    = anim.text(0)
-                        stageName   = stage.text(0)
-                        animId      = stage.text(1)
+                                    if stage.checkState(0) != Qt.Unchecked:
+                                        packageName = package.text(0)
+                                        moduleName  = module.text(0)
+                                        animName    = anim.text(0)
+                                        stageName   = stage.text(0)
+                                        animId      = stage.text(1)
 
-                        animInfo    = (animId, packageName, moduleName, animName, stageName)
-                        checkedAnimsInfo.append(animInfo)
-
+                                        animInfo    = (animId, packageName, moduleName, animName, stageName)
+                                        checkedAnimsInfo.append(animInfo)
         return checkedAnimsInfo
 
 
