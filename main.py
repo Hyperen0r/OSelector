@@ -18,7 +18,7 @@ from PyQt5.QtWidgets    import (QApplication, QWidget, QToolTip,
                                 QPushButton, QMessageBox, QDesktopWidget,
                                 QMainWindow, QFileDialog, QHBoxLayout,
                                 QVBoxLayout, QLCDNumber, QLabel, QListWidget,
-                                QTreeWidget, QTreeWidgetItem)
+                                QTreeWidget, QTreeWidgetItem, QProgressBar)
 from PyQt5.QtGui        import QIcon, QFont, QBrush, QColor
 from PyQt5.QtCore       import QSize, Qt
 
@@ -162,7 +162,8 @@ class OSelectorWindow(QMainWindow):
         self.buttonScan.setDefault(True)
         self.lcdAnimsFound  = QLCDNumber(self)
 
-        self.buttonScan.resize(self.buttonScan.sizeHint())
+        self.buttonScan.setFont(QFont("Times", 15, QFont.Bold))
+        self.buttonScan.setMinimumSize(self.buttonScan.minimumSizeHint())
         self.buttonScan.clicked.connect(self.scanFolder)
 
         labelAnimsFound = QLabel("Animations files found : ")
@@ -187,6 +188,10 @@ class OSelectorWindow(QMainWindow):
 
         self.mainLayout.addWidget(self.buttonGenerate)
 
+        # ----- FOURTH ROW : Progress Bar -----
+        self.progressBar = QProgressBar(self)
+        self.mainLayout.addWidget(self.progressBar)
+
         self.show()
 
 
@@ -198,6 +203,8 @@ class OSelectorWindow(QMainWindow):
         self.config.read(self.config_path)
 
         logging.basicConfig(filename=self.config.get("LOG", "name"), level=logging.DEBUG, format='[%(levelname)s] : %(message)s')
+        logger = logging.getLogger()
+        logger.disabled = self.config.getboolean("LOG", "disabled")
 
         if self.config.getboolean("CONFIG", "bFirstTime"):
 
@@ -227,6 +234,8 @@ class OSelectorWindow(QMainWindow):
 
 
     def scanFolder(self):
+
+        self.progressBar.setRange(0, 0)
         packages = []
 
         scanDir = QFileDialog.getExistingDirectory(self, 'Mod folder location', self.config.get("PATHS", "ModFolder"), QFileDialog.ShowDirsOnly)
@@ -235,6 +244,8 @@ class OSelectorWindow(QMainWindow):
 
         animPackage = None
         animModule = None
+
+        counter = 0
 
         if scanDir:
 
@@ -271,21 +282,24 @@ class OSelectorWindow(QMainWindow):
                                 if animType == ANIM_TYPE.BASIC:
                                     anim = Animation(animType, animOptions, animId, animFile, animObj)
                                     animModule.addAnimation(anim)
+                                    counter +=1
                                     logging.info("        Adding basic animation")
 
                                 elif animType == ANIM_TYPE.SEQUENCE:
                                     anim = Animation(animType, animOptions, animId, animFile, animObj)
                                     animModule.addAnimation(anim)
+                                    counter +=1
                                     logging.info("        Adding sequence animation")
 
                                 elif animType == ANIM_TYPE.ADDITIVE:
                                     anim.addStage(animId, animFile, animObj)
+                                    counter +=1
                                     logging.info("            Adding stage")
 
                         animModule.animations.sort(key=lambda x: x.name, reverse=False)
 
         self.createTreeByMod(packages)
-        self.lcdAnimsFound.display(len(module))
+        self.lcdAnimsFound.display(counter)
 
 
     def createTreeByMod(self, packages):
@@ -316,23 +330,32 @@ class OSelectorWindow(QMainWindow):
                         stageSection = QTreeWidgetItem(animSection)
                         stageSection.setFlags(stageSection.flags() | Qt.ItemIsUserCheckable)
                         stageSection.setText(0, "Stage " + str(counter))
-                        stageSection.setText(1, animation.stages_file[0][i])
+                        stageSection.setText(1, animation.stages[0][i])
                         stageSection.setCheckState(0, Qt.Checked)
                         counter += 1
 
         root = self.treeAnimFiles.invisibleRootItem()
-
-        # TODO Cleanup TreeView
-        """
         for i in range(root.childCount()):
             package = root.child(i)
 
-            for j in range(package.childCount()):
-                module = package.child(j)
-                if module.childCount() == 0:
-                    module.disable()
-        """
+            if package:
+                for j in range(package.childCount()):
+                    module = package.child(j)
 
+                    if module:
+                        for k in range(module.childCount()):
+                            anim = module.child(j)
+
+                            if anim and anim.childCount  == 0:
+                                module.removeChild(anim)
+
+                        if module.childCount() == 0:
+                            package.removeChild(module)
+
+                if package.childCount() == 0:
+                    root.removeChild(package)
+
+        self.progressBar.setRange(0, 1)
 
     def generatePlugin(self):
         logging.info("=============== GENERATING PLUGIN ===============")
@@ -377,43 +400,157 @@ class OSelectorWindow(QMainWindow):
         entryStyle.set("slc", "FFFFFF")
         """
 
-        folder0 = ET.Element("folder0")
-        folder0.set("n", self.config.get("PLUGIN", "name" ) )
-        folder0.set("i", self.config.get("PLUGIN", "image") )
+        root = ET.Element("folder0")
+        root.set("n", self.config.get("PLUGIN", "name" ) )
+        root.set("i", self.config.get("PLUGIN", "image") )
 
-        previousSection     = ""
-        previousAnim        = ""
-        previousActor       = ""
+        previousPackage = ""
+        previousModule  = ""
+        previousAnim    = ""
 
-        folder1 = None
-        folder2 = None
-        folder3 = None
+        maxItemPerSection   = self.config.getint("PLUGIN", "maxItemPerSection")
+        animations          = self.getCheckedAnimsInfo()
 
-        anims = self.getCheckedAnimsInfo()
-        for animId, section, anim, actor, stage in anims:
+        packageFolder       = None
+        packageSetFolder    = None
+        moduleFolder        = None
+        moduleSetFolder     = None
+        animFolder          = None
+        animSetFolder       = None
+        entry               = None
+        stageSetFolder      = None
 
-            if previousSection != section:
-                folder1 = ET.SubElement(folder0, "folder1")
-                folder1.set("n", section)
-                folder1.set("i", self.config.get("PLUGIN", "sectionLevelImage") )
-                previousSection = section
+        packageCounter      = 0
+        packageSetCounter   = 0
+        packageFolderOffset = 0
+        moduleCounter       = 0
+        moduleSetCounter    = 0
+        moduleFolderOffset  = 0
+        animCounter         = 0
+        animSetCounter      = 0
+        animFolderOffset    = 0
+        stageCounter        = 0
+        stageSetCounter     = 0
 
-            if previousAnim != anim:
-                folder2 = ET.SubElement(folder1, "folder2")
-                folder2.set("n", anim)
-                folder2.set("i", self.config.get("PLUGIN", "animLevelImage") )
+        for animId, package, module, anim, stage in animations:
+
+            # ===== PACKAGE =====
+            nbPackages      = self.getNumberOfCheckedPackage()
+            nbOfPackageSets =  nbPackages / maxItemPerSection
+
+            if nbOfPackageSets > 1:
+                packageFolderOffset =1
+
+                if packageCounter >= maxItemPerSection or packageSetCounter == 0:
+                    packageSetCounter += 1
+                    packageCounter     = 0
+
+                    packageSetFolder = ET.SubElement(root, "folder1")
+                    packageSetFolder.set("n", "Set " + str(packageSetCounter))
+                    packageSetFolder.set("i", self.config.get("PLUGIN", "setFolderImage") )
+
+            if package != previousPackage:
+                moduleCounter       = 0
+                moduleSetCounter    = 0
+                moduleFolderOffset  = 0
+                animCounter         = 0
+                animSetCounter      = 0
+                animFolderOffset    = 0
+                stageCounter        = 0
+                stageSetCounter     = 0
+
+                if nbOfPackageSets > 1:
+                    packageFolder = ET.SubElement(packageSetFolder, "folder" + str(1+packageFolderOffset))
+                else:
+                    packageFolder = ET.SubElement(root, "folder" + str(1+packageFolderOffset))
+
+                packageFolder.set("n", package)
+                packageFolder.set("i", self.config.get("PLUGIN", "packageFolderImage") )
+                packageCounter +=1
+                previousPackage = package
+
+            # ===== MODULE =====
+            nbModules      = self.getNumberOfCheckedModuleFromPackage(package)
+            nbOfModuleSets =  nbModules / maxItemPerSection
+
+            if nbOfModuleSets > 1:
+                moduleFolderOffset = 1
+
+                if moduleCounter >= maxItemPerSection or moduleSetCounter == 0:
+                    moduleSetCounter += 1
+                    moduleCounter     = 0
+
+                    moduleSetFolder = ET.SubElement(packageFolder, "folder" + str(2 + packageFolderOffset))
+                    moduleSetFolder.set("n", "Set " + str(moduleSetCounter))
+                    moduleSetFolder.set("i", self.config.get("PLUGIN", "setFolderImage") )
+
+            if module != previousModule:
+                animCounter         = 0
+                animSetCounter      = 0
+                animFolderOffset    = 0
+                stageCounter        = 0
+                stageSetCounter     = 0
+
+                if nbOfModuleSets > 1:
+                    moduleFolder = ET.SubElement(moduleSetFolder, "folder" + str(2 + packageFolderOffset + moduleFolderOffset))
+                else:
+                    moduleFolder = ET.SubElement(packageFolder, "folder" + str(2 + packageFolderOffset + moduleFolderOffset))
+
+                moduleFolder.set("n", module)
+                moduleFolder.set("i", self.config.get("PLUGIN", "moduleFolderImage") )
+                moduleCounter +=1
+                previousModule = module
+
+            # ===== ANIM =====
+            nbAnims      = self.getNumberOfCheckedAnimFromModule(package, module)
+            nbOfAnimSets =  nbAnims / maxItemPerSection
+
+            if nbOfAnimSets > 1:
+                animFolderOffset = 1
+
+                if animCounter >= maxItemPerSection or animSetCounter == 0:
+                    animSetCounter += 1
+                    animCounter     = 0
+
+                    animSetFolder = ET.SubElement(moduleFolder, "folder" + str(3 + packageFolderOffset + moduleFolderOffset))
+                    animSetFolder.set("n", "Set " + str(animSetCounter))
+                    animSetFolder.set("i", self.config.get("PLUGIN", "setFolderImage") )
+
+            if anim != previousAnim:
+                stageCounter        = 0
+                stageSetCounter     = 0
+
+                if nbOfAnimSets > 1:
+                    animFolder = ET.SubElement(animSetFolder, "folder" + str(3 + packageFolderOffset + moduleFolderOffset + animFolderOffset))
+                else:
+                    animFolder = ET.SubElement(moduleFolder, "folder" + str(3 + packageFolderOffset + moduleFolderOffset + animFolderOffset))
+
+                animFolder.set("n", anim)
+                animFolder.set("i", self.config.get("PLUGIN", "animFolderImage") )
+                animCounter +=1
                 previousAnim = anim
 
-            if previousActor != actor:
-                folder3 = ET.SubElement(folder2, "folder3")
-                folder3.set("n", actor)
-                folder3.set("i", self.config.get("PLUGIN", "actorLevelImage") )
-                previousActor = actor
+            # ===== STAGE =====
+            nbStages      = self.getNumberOfCheckedStageFromAnim(package, module, anim)
+            nbOfStageSets =  nbStages / maxItemPerSection
 
-            entry = ET.SubElement(folder3, "entry")
+            if nbOfStageSets > 1:
+                if stageCounter >= maxItemPerSection or stageSetCounter == 0:
+                    stageSetCounter += 1
+                    stageCounter    = 0
+
+                    stageSetFolder = ET.SubElement(animFolder, "folder" + str(4 + packageFolderOffset + moduleFolderOffset + animFolderOffset))
+                    stageSetFolder.set("n", "Set " + str(stageSetCounter))
+                    stageSetFolder.set("i", self.config.get("PLUGIN", "setFolderImage") )
+
+                entry = ET.SubElement(stageSetFolder, "entry")
+            else:
+                entry = ET.SubElement(animFolder, "entry")
+
             entry.set("n", stage)
+            entry.set("i", self.config.get("PLUGIN", "stageFolderImage") )
             entry.set("id", animId)
-            entry.set("i", self.config.get("PLUGIN", "stageLevelImage") )
+            stageCounter += 1
 
         with open(pluginPath + self.config.get("PLUGIN", "osplug") + ".myo", "w") as file:
             """
@@ -424,9 +561,73 @@ class OSelectorWindow(QMainWindow):
             data = ET.tostring(entryStyle, "unicode")
             file.write(data)
             """
-            data = ET.tostring(folder0, "unicode")
+            data = ET.tostring(root, "unicode")
             file.write(data)
             print("Done !")
+
+    def getNumberOfCheckedPackage(self):
+        root    = self.treeAnimFiles.invisibleRootItem()
+        count   = 0
+
+        for i in range(root.childCount()):
+            if root.child(i).checkState(0) == Qt.Checked:
+                count += 1
+
+        return count
+
+
+    def getNumberOfCheckedModuleFromPackage(self, packageName):
+        root = self.treeAnimFiles.invisibleRootItem()
+        count   = 0
+
+        for i in range(root.childCount()):
+            package = root.child(i)
+            if package.text(0) == packageName:
+
+                for j in range(package.childCount()):
+                    if package.child(j).checkState(0) == Qt.Checked:
+                        count += 1
+        return count
+
+
+    def getNumberOfCheckedAnimFromModule(self, packageName, moduleName):
+        root = self.treeAnimFiles.invisibleRootItem()
+        count   = 0
+
+        for i in range(root.childCount()):
+            package = root.child(i)
+            if package.text(0) == packageName:
+
+                for j in range(package.childCount()):
+                    module = package.child(j)
+                    if module.text(0) == moduleName:
+
+                        for k in range(module.childCount()):
+                            if module.child(k).checkState(0) == Qt.Checked:
+                                count += 1
+        return count
+
+
+    def getNumberOfCheckedStageFromAnim(self, packageName, moduleName, animName):
+        root = self.treeAnimFiles.invisibleRootItem()
+        count   = 0
+
+        for i in range(root.childCount()):
+            package = root.child(i)
+            if package.text(0) == packageName:
+
+                for j in range(package.childCount()):
+                    module = package.child(j)
+                    if module.text(0) == moduleName:
+
+                        for k in range(module.childCount()):
+                            anim = module.child(k)
+                            if anim.text(0) == animName:
+
+                                for l in range(anim.childCount()):
+                                    if anim.child(l).checkState(0) == Qt.Checked:
+                                        count += 1
+        return count
 
 
     def getCheckedAnimsInfo(self):
@@ -456,6 +657,7 @@ class OSelectorWindow(QMainWindow):
                         checkedAnimsInfo.append(animInfo)
 
         return checkedAnimsInfo
+
 
     def create_dir(self, path):
         # Prevent execution if the library already exists
