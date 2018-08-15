@@ -19,7 +19,7 @@ from PyQt5.QtWidgets    import (QApplication, QWidget, QToolTip,
                                 QMainWindow, QFileDialog, QHBoxLayout,
                                 QVBoxLayout, QLCDNumber, QLabel, QListWidget,
                                 QTreeWidget, QTreeWidgetItem, QProgressBar,
-                                QGroupBox, QFontDialog)
+                                QGroupBox, QFontDialog, QHeaderView)
 from PyQt5.QtGui        import QIcon, QFont, QBrush, QColor
 from PyQt5.QtCore       import QSize, Qt
 
@@ -49,6 +49,15 @@ class ANIM_OPTION(Enum):
     DURATION        = '(?:,|-)(D\d*\.\d*)'
     TRIGGER         = "(?:,|-)(T[^\/]*\/\d*\.\d*)"
     UNKNOWN         = ""
+
+
+class TREE_VIEW_COLUMN(Enum):
+    NAME        = 0
+    TYPE        = 1
+    OPTIONS     = 2
+    ID          = 3
+    FILE        = 4
+    ANIM_OBJ    = 5
 
 
 class Animation():
@@ -118,6 +127,7 @@ class Animation():
             baseId = found.group(1)
         return baseId
 
+
 class AnimationModule():
 
     def __init__(self, name):
@@ -138,6 +148,46 @@ class AnimationPackage():
         self.modules.append(module)
 
 
+def createButton(parent, text, function):
+    button = QPushButton(text, parent)
+    button.setFont(getNormalFont())
+    button.setMinimumSize(button.minimumSizeHint())
+    button.setStyleSheet(getButtonStyleSheet())
+    button.clicked.connect(function)
+    return button
+
+
+def createGroupBox(text):
+    groupBox = QGroupBox(text)
+    groupBox.setFont(getTitleFont())
+    groupBox.setAlignment(Qt.AlignHCenter)
+    return groupBox
+
+
+def createLCD(parent):
+    lcd  = QLCDNumber(parent)
+    lcd.setSegmentStyle(2)
+    return lcd
+
+
+def createLabel(text):
+    label = QLabel("Animations found : ")
+    label.setFont(getNormalFont())
+    return label
+
+
+def getTitleFont():
+    return QFont("Bahnschrift", 13, QFont.Bold)
+
+
+def getNormalFont():
+    return QFont("Bahnschrift", 9, QFont.Normal)
+
+
+def getButtonStyleSheet():
+    return "padding: 10px"
+
+
 class OSelectorWindow(QMainWindow):
 
     def __init__(self, argv):
@@ -147,17 +197,8 @@ class OSelectorWindow(QMainWindow):
         self.initSettings(argv)
 
 
-    def getTitleFont(self):
-        return QFont("Bahnschrift", 13, QFont.Bold)
-
-    def getNormalFont(self):
-        return QFont("Bahnschrift", 9, QFont.Normal)
-
-    def getButtonStyleSheet(self):
-        return "padding: 10px"
-
     def initUI(self):
-        self.setMinimumSize(QSize(900, 900))
+        self.setMinimumSize(QSize(1200, 1000))
         self.center()
         self.setWindowTitle('OSelector - Generation Tool')
 
@@ -168,21 +209,10 @@ class OSelectorWindow(QMainWindow):
         self.centralWidget.setLayout(self.mainLayout)
 
         # ----- FIRST ROW : Scanning for animations files -----
-        self.groupBoxScanning = QGroupBox("STEP I - Scan")
-        self.groupBoxScanning.setFont(self.getTitleFont())
-        self.groupBoxScanning.setAlignment(Qt.AlignHCenter)
-
-        self.buttonScan = QPushButton("Scan for animations", self)
-        self.buttonScan.setFont(self.getNormalFont())
-        self.buttonScan.setMinimumSize(self.buttonScan.minimumSizeHint())
-        self.buttonScan.setStyleSheet(self.getButtonStyleSheet())
-        self.buttonScan.clicked.connect(self.scanFolder)
-
-        labelAnimsFound = QLabel("Animations found : ")
-        labelAnimsFound.setFont(self.getNormalFont())
-
-        self.lcdAnimsFound  = QLCDNumber(self)
-        self.lcdAnimsFound.setSegmentStyle(2)
+        self.groupBoxScanning   = createGroupBox("STEP I - Scan")
+        self.buttonScan         = createButton(self, "Scan for animations", self.scanFolder)
+        labelAnimsFound         = createLabel("Animations found : ")
+        self.lcdAnimsFound      = createLCD(self)
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.buttonScan)
@@ -194,35 +224,41 @@ class OSelectorWindow(QMainWindow):
         self.mainLayout.addWidget(self.groupBoxScanning)
 
         # ----- SECOND ROW : List animations files -----
-        self.groupBoxAnim = QGroupBox("STEP II - Select")
-        self.groupBoxAnim.setFont(self.getTitleFont())
-        self.groupBoxAnim.setAlignment(Qt.AlignHCenter)
+        self.groupBoxAnim = createGroupBox("STEP II - Select")
 
-        self.treeAnimFiles = QTreeWidget();
-        self.treeAnimFiles.header().hide()
+        self.treeAnimFiles = QTreeWidget()
+        self.treeAnimFiles.header().setDefaultAlignment(Qt.AlignHCenter)
+        self.treeAnimFiles.header().setMinimumSectionSize(85)
+        self.treeAnimFiles.header().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.treeAnimFiles.header().setFont(getNormalFont())
+        self.treeAnimFiles.setHeaderLabels([TREE_VIEW_COLUMN.NAME.name, TREE_VIEW_COLUMN.TYPE.name, TREE_VIEW_COLUMN.OPTIONS.name, TREE_VIEW_COLUMN.ID.name, TREE_VIEW_COLUMN.FILE.name, TREE_VIEW_COLUMN.ANIM_OBJ.name])
+        self.treeAnimFiles.setColumnWidth(TREE_VIEW_COLUMN.NAME.value, 400)
+        self.treeAnimFiles.setColumnWidth(TREE_VIEW_COLUMN.TYPE.value, 100)
+        self.treeAnimFiles.setColumnWidth(TREE_VIEW_COLUMN.ID.value, 200)
+        self.treeAnimFiles.setSortingEnabled(True)
+        self.treeAnimFiles.setAlternatingRowColors(True)
+
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.treeAnimFiles)
 
         hbox = QHBoxLayout()
-        hbox.addWidget(self.treeAnimFiles)
+        hbox.addWidget(createButton(self, "Test", self.none))
+        hbox.addWidget(createButton(self, "Test", self.none))
+        hbox.addWidget(createButton(self, "Test", self.none))
+        hbox.addWidget(createButton(self, "Test", self.none))
+        hbox.addWidget(createButton(self, "Test", self.none))
+        hbox.addWidget(createButton(self, "Test", self.none))
 
-        self.groupBoxAnim.setLayout(hbox)
+        vbox.addItem(hbox)
+
+        self.groupBoxAnim.setLayout(vbox)
         self.mainLayout.addWidget(self.groupBoxAnim)
 
         # ----- THIRD ROW : Generate plugin -----
-        self.groupBoxGenerate = QGroupBox("STEP III - Generate")
-        self.groupBoxGenerate.setFont(self.getTitleFont())
-        self.groupBoxGenerate.setAlignment(Qt.AlignHCenter)
-
-        self.buttonGenerate = QPushButton("Generate Plugin", self)
-        self.buttonGenerate.setFont(self.getNormalFont())
-        self.buttonGenerate.setMinimumSize(self.buttonGenerate.minimumSizeHint())
-        self.buttonGenerate.setStyleSheet(self.getButtonStyleSheet())
-        self.buttonGenerate.clicked.connect(self.generatePlugin)
-
-        labelAnimsChecked = QLabel("Animations checked : ")
-        labelAnimsChecked.setFont(self.getNormalFont())
-
-        self.lcdAnimsChecked  = QLCDNumber(self)
-        self.lcdAnimsChecked.setSegmentStyle(2)
+        self.groupBoxGenerate   = createGroupBox("STEP III - Generate")
+        self.buttonGenerate     = createButton(self, "Generate Plugin", self.generatePlugin)
+        labelAnimsChecked       = createLabel("Animations checked : ")
+        self.lcdAnimsChecked    = createLCD(self)
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.buttonGenerate)
@@ -239,6 +275,9 @@ class OSelectorWindow(QMainWindow):
 
         self.show()
 
+    def none(self):
+        print("debug")
+        return
 
     def initSettings(self, argv):
         self.path           = argv[0].rsplit('/', 1)[0]
@@ -254,15 +293,18 @@ class OSelectorWindow(QMainWindow):
         if self.config.getboolean("CONFIG", "bFirstTime"):
 
             bUseMo  = QMessageBox.question(self, 'Initialization', "Do you use MO ?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+            if bUseMo == QMessageBox.Yes:
+                self.config.set("CONFIG", "bUseMo", "True")
+                QMessageBox.information(self, "Instuctions for MO users", "Next dialog window will ask you where your Mod Organiser mods/ folder is, thus allowing to install the plugin directly. You will still need to activate it in Mod Organizer left pane. If you don't see the mod, refresh the left pane.")
+            else:
+                QMessageBox.information(self, "Instuctions for Non-MO users", "Next dialog window will ask you to specify a folder location to store the plugin. In order to install it with a mod manager, compress the generated folder (Unless you specified skyrim/data folder")
+                self.config.set("CONFIG", "bUseMo", "False")
+
             fname   = QFileDialog.getExistingDirectory(self, 'Mod folder location', '', QFileDialog.ShowDirsOnly)
 
             if fname:
                 self.config.set("PATHS", "ModFolder", str(fname))
-
-            if bUseMo == QMessageBox.Yes:
-                self.config.set("CONFIG", "bUseMo", "True")
-            else:
-                self.config.set("CONFIG", "bUseMo", "False")
 
             self.config.set("CONFIG", "bFirstTime", "False")
 
@@ -285,6 +327,9 @@ class OSelectorWindow(QMainWindow):
     def scanFolder(self):
 
         self.progressBar.setRange(0, 0)
+
+        self.groupBoxGenerate.setDisabled(True)
+        self.groupBoxScanning.setDisabled(True)
         packages = []
 
         scanDir = QFileDialog.getExistingDirectory(self, 'Mod folder location', self.config.get("PATHS", "ModFolder"), QFileDialog.ShowDirsOnly)
@@ -354,6 +399,8 @@ class OSelectorWindow(QMainWindow):
         self.treeAnimFiles.itemClicked.connect(self.displayLCDAnimChecked)
         self.lcdAnimsFound.display(counter)
         self.displayLCDAnimChecked()
+        self.groupBoxGenerate.setDisabled(False)
+        self.groupBoxScanning.setDisabled(False)
 
 
     def createTreeByMod(self, packages):
@@ -744,6 +791,7 @@ class OSelectorWindow(QMainWindow):
         else:
             logging.info("Creating new directory: " + path)
             os.makedirs(path)
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
