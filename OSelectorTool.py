@@ -105,7 +105,7 @@ class OSelectorWindow(QMainWindow):
         self.config = configparser.ConfigParser()
         self.config.read(self.config_path)
 
-        if self.config.get("LOG", "enabled"):
+        if not self.config.get("LOG", "enabled"):
             logging.basicConfig(filename=self.config.get("LOG", "name"), level=logging.DEBUG, format='[%(levelname)s] : %(message)s')
         else:
             logger = logging.getLogger()
@@ -211,6 +211,7 @@ class OSelectorWindow(QMainWindow):
                                 packages.append(animPackage)
 
         self.createTreeByMod(packages)
+        self.treeAnimFiles.cleanup()
         self.treeAnimFiles.itemClicked.connect(self.displayLCDAnimChecked)
         self.lcdAnimsFound.display(counter)
         self.displayLCDAnimChecked()
@@ -257,7 +258,6 @@ class OSelectorWindow(QMainWindow):
             invisibleRoot.addChild(child)
         invisibleRoot.removeChild(root)
 
-        self.treeAnimFiles.cleanup()
         self.progressBar.setRange(0, 1)
 
 

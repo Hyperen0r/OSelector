@@ -119,7 +119,6 @@ class AnimTreeWidget(QTreeWidget):
         if not n1:
             n1 = self.invisibleRootItem()
             for i in range(item.childCount()):
-                print(item.child(0).text(0))
                 self.moveUp(item.child(0))
             self.removeFromParent(item)
             return True
