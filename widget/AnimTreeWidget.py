@@ -1,6 +1,8 @@
+import xml.etree.ElementTree as ET
+import widget.AnimTreeItem
+
 from enum import Enum
 from widget.QuickyGui import *
-import widget.AnimTreeItem
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QHeaderView, QMenu, QTreeWidget
 from PyQt5.QtGui import QCursor
@@ -37,6 +39,16 @@ class AnimTreeWidget(QTreeWidget):
         self.setAlternatingRowColors(True)
         self.setEditTriggers(QTreeWidget.DoubleClicked | QTreeWidget.EditKeyPressed)
         self.setSelectionMode(QTreeWidget.ContiguousSelection)
+
+    def animationCount(self, state=Qt.Unchecked):
+        root = self.invisibleRootItem()
+
+        counter = 0
+        for i in range(root.childCount()):
+            child = root.child(i)
+            if child.checkState(0) != state:
+                counter += child.animationCount(state)
+        return counter
 
     def checkAll(self):
         root = self.invisibleRootItem()
@@ -132,6 +144,18 @@ class AnimTreeWidget(QTreeWidget):
         item = n1.takeChild(itemIndex)
         n2.addChild(item)
         return True
+
+    def toXML(self, config):
+        root = self.invisibleRootItem()
+        folder0 = ET.Element("folder0")
+        folder0.set("n", config.get("PLUGIN", "name"))
+        folder0.set("i", config.get("PLUGIN", "image"))
+
+        for i in range(root.childCount()):
+            child = root.child(i)
+            if child.checkState(0) != Qt.Unchecked:
+                child.toXML(folder0, 1, config)
+        return folder0
 
     def removeFromParent(self, item=None):
         if not item:

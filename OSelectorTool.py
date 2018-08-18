@@ -134,7 +134,7 @@ class OSelectorWindow(QMainWindow):
                 self.config.write(configFile)
 
     def displayLCDAnimChecked(self):
-        self.lcdAnimsChecked.display(len(self.getCheckedAnimsInfo()))
+        self.lcdAnimsChecked.display(self.treeAnimFiles.animationCount())
 
     def scanFolder(self):
 
@@ -250,7 +250,6 @@ class OSelectorWindow(QMainWindow):
                         stageSection.setAnimation(animation, i)
                         animSection.addChildWithSplitter(stageSection)
                         counter += 1
-            self.treeAnimFiles.repaint()
 
         invisibleRoot = self.treeAnimFiles.invisibleRootItem()
         for i in range(root.childCount()):
@@ -259,7 +258,6 @@ class OSelectorWindow(QMainWindow):
         invisibleRoot.removeChild(root)
 
         self.progressBar.setRange(0, 1)
-
 
     def generatePlugin(self):
         logging.info("=============== GENERATING PLUGIN ===============")
@@ -304,178 +302,7 @@ class OSelectorWindow(QMainWindow):
         entryStyle.set("slc", "FFFFFF")
         """
 
-        root = ET.Element("folder0")
-        root.set("n", self.config.get("PLUGIN", "name"))
-        root.set("i", self.config.get("PLUGIN", "image"))
-
-        previousPackage = ""
-        previousModule = ""
-        previousAnim = ""
-
-        maxItemPerSection = self.config.getint("PLUGIN", "maxItemPerSection")
-        animations = self.getCheckedAnimsInfo()
-
-        packageFolder = None
-        packageSetFolder = None
-        moduleFolder = None
-        moduleSetFolder = None
-        animFolder = None
-        animSetFolder = None
-        stageSetFolder = None
-
-        packageCounter = 0
-        packageSetCounter = 0
-        packageFolderOffset = 0
-        moduleCounter = 0
-        moduleSetCounter = 0
-        moduleFolderOffset = 0
-        animCounter = 0
-        animSetCounter = 0
-        animFolderOffset = 0
-        stageCounter = 0
-        stageSetCounter = 0
-        minusOffset = 0
-
-        for animId, package, module, anim, stage in animations:
-
-            # ===== PACKAGE =====
-            nbPackages = self.getNumberOfCheckedPackage()
-            nbOfPackageSets = nbPackages / maxItemPerSection
-
-            if nbOfPackageSets > 1:
-                packageFolderOffset = 1
-
-                if packageCounter >= maxItemPerSection or packageSetCounter == 0:
-                    packageSetCounter += 1
-                    packageCounter = 0
-
-                    packageSetFolder = ET.SubElement(root, "folder1")
-                    packageSetFolder.set("n", "Package Set " + str(packageSetCounter))
-                    packageSetFolder.set("i", self.config.get("PLUGIN", "setFolderImage"))
-
-            if package != previousPackage:
-                moduleCounter = 0
-                moduleSetCounter = 0
-                moduleFolderOffset = 0
-                animCounter = 0
-                animSetCounter = 0
-                animFolderOffset = 0
-                stageCounter = 0
-                stageSetCounter = 0
-
-                if nbOfPackageSets > 1:
-                    packageFolder = ET.SubElement(packageSetFolder, "folder" + str(1 + packageFolderOffset))
-                else:
-                    packageFolder = ET.SubElement(root, "folder" + str(1 + packageFolderOffset))
-
-                packageFolder.set("n", package)
-                packageFolder.set("i", self.config.get("PLUGIN", "packageFolderImage"))
-                packageCounter += 1
-                previousPackage = package
-
-            # ===== MODULE =====
-            nbModules = self.getNumberOfCheckedModuleFromPackage(package)
-            nbOfModuleSets = nbModules / maxItemPerSection
-
-            if nbOfModuleSets > 1:
-                moduleFolderOffset = 1
-
-                if moduleCounter >= maxItemPerSection or moduleSetCounter == 0:
-                    moduleSetCounter += 1
-                    moduleCounter = 0
-
-                    moduleSetFolder = ET.SubElement(packageFolder, "folder" + str(2 + packageFolderOffset))
-                    moduleSetFolder.set("n", "Module Set " + str(moduleSetCounter))
-                    moduleSetFolder.set("i", self.config.get("PLUGIN", "setFolderImage"))
-
-            if module != previousModule:
-                animCounter = 0
-                animSetCounter = 0
-                animFolderOffset = 0
-                stageCounter = 0
-                stageSetCounter = 0
-
-                if nbOfModuleSets > 1:
-                    moduleFolder = ET.SubElement(moduleSetFolder,
-                                                 "folder" + str(2 + packageFolderOffset + moduleFolderOffset))
-                else:
-                    moduleFolder = ET.SubElement(packageFolder,
-                                                 "folder" + str(2 + packageFolderOffset + moduleFolderOffset))
-
-                moduleFolder.set("n", module)
-                moduleFolder.set("i", self.config.get("PLUGIN", "moduleFolderImage"))
-                moduleCounter += 1
-                previousModule = module
-
-            # ===== ANIM =====
-            nbAnims = self.getNumberOfCheckedAnimFromModule(package, module)
-            nbOfAnimSets = nbAnims / maxItemPerSection
-
-            if nbOfAnimSets > 1:
-                animFolderOffset = 1
-
-                if animCounter >= maxItemPerSection or animSetCounter == 0:
-                    animSetCounter += 1
-                    animCounter = 0
-
-                    animSetFolder = ET.SubElement(moduleFolder,
-                                                  "folder" + str(3 + packageFolderOffset + moduleFolderOffset))
-                    animSetFolder.set("n", "Anim Set " + str(animSetCounter))
-                    animSetFolder.set("i", self.config.get("PLUGIN", "setFolderImage"))
-
-            if anim != previousAnim:
-                stageCounter = 0
-                stageSetCounter = 0
-
-                nbStages = self.getNumberOfCheckedStageFromAnim(package, module, anim)
-
-                if nbStages > 1:
-                    if nbOfAnimSets > 1:
-                        animFolder = ET.SubElement(animSetFolder, "folder" + str(
-                            3 + packageFolderOffset + moduleFolderOffset + animFolderOffset))
-                    else:
-                        animFolder = ET.SubElement(moduleFolder, "folder" + str(
-                            3 + packageFolderOffset + moduleFolderOffset + animFolderOffset))
-
-                    animFolder.set("n", anim)
-                    animFolder.set("i", self.config.get("PLUGIN", "animFolderImage"))
-                else:
-                    minusOffset = 1
-
-                animCounter += 1
-                previousAnim = anim
-
-            # ===== STAGE =====
-            nbStages = self.getNumberOfCheckedStageFromAnim(package, module, anim)
-            nbOfStageSets = nbStages / maxItemPerSection
-
-            if nbOfStageSets > 1:
-                if stageCounter >= maxItemPerSection or stageSetCounter == 0:
-                    stageSetCounter += 1
-                    stageCounter = 0
-
-                    stageSetFolder = ET.SubElement(animFolder, "folder" + str(
-                        4 + packageFolderOffset + moduleFolderOffset + animFolderOffset))
-                    stageSetFolder.set("n", "Stage Set " + str(stageSetCounter))
-                    stageSetFolder.set("i", self.config.get("PLUGIN", "setFolderImage"))
-
-                entry = ET.SubElement(stageSetFolder, "entry")
-                entry.set("n", stage)
-            else:
-                if minusOffset:
-                    if animFolderOffset:
-                        entry = ET.SubElement(animSetFolder, "entry")
-                    else:
-                        entry = ET.SubElement(moduleFolder, "entry")
-                    minusOffset = 0
-                    entry.set("n", animId)
-                else:
-                    entry = ET.SubElement(animFolder, "entry")
-                    entry.set("n", stage)
-
-            entry.set("i", self.config.get("PLUGIN", "stageFolderImage"))
-            entry.set("id", animId)
-            stageCounter += 1
+        XMLRoot = self.treeAnimFiles.toXML(self.config)
 
         with open(pluginPath + self.config.get("PLUGIN", "osplug") + ".myo", "w") as file:
             """
@@ -486,101 +313,9 @@ class OSelectorWindow(QMainWindow):
             data = ET.tostring(entryStyle, "unicode")
             file.write(data)
             """
-            data = ET.tostring(root, "unicode")
+            data = ET.tostring(XMLRoot, "unicode")
             file.write(data)
             print("Done !")
-
-    def getNumberOfCheckedPackage(self):
-        root = self.treeAnimFiles.invisibleRootItem()
-        count = 0
-
-        for i in range(root.childCount()):
-            if root.child(i).checkState(0) != Qt.Unchecked:
-                count += 1
-
-        return count
-
-    def getNumberOfCheckedModuleFromPackage(self, packageName):
-        root = self.treeAnimFiles.invisibleRootItem()
-        count = 0
-
-        for i in range(root.childCount()):
-            package = root.child(i)
-            if package.text(0) == packageName:
-
-                for j in range(package.childCount()):
-                    if package.child(j).checkState(0) != Qt.Unchecked:
-                        count += 1
-        return count
-
-    def getNumberOfCheckedAnimFromModule(self, packageName, moduleName):
-        root = self.treeAnimFiles.invisibleRootItem()
-        count = 0
-
-        for i in range(root.childCount()):
-            package = root.child(i)
-            if package.text(0) == packageName:
-
-                for j in range(package.childCount()):
-                    module = package.child(j)
-                    if module.text(0) == moduleName:
-
-                        for k in range(module.childCount()):
-                            if module.child(k).checkState(0) != Qt.Unchecked:
-                                count += 1
-        return count
-
-    def getNumberOfCheckedStageFromAnim(self, packageName, moduleName, animName):
-        root = self.treeAnimFiles.invisibleRootItem()
-        count = 0
-
-        for i in range(root.childCount()):
-            package = root.child(i)
-            if package.text(0) == packageName:
-
-                for j in range(package.childCount()):
-                    module = package.child(j)
-                    if module.text(0) == moduleName:
-
-                        for k in range(module.childCount()):
-                            anim = module.child(k)
-                            if anim.text(0) == animName:
-
-                                for l in range(anim.childCount()):
-                                    if anim.child(l).checkState(0) == Qt.Checked:
-                                        count += 1
-        return count
-
-    def getCheckedAnimsInfo(self):
-
-        checkedAnimsInfo = []
-
-        root = self.treeAnimFiles.invisibleRootItem()
-        for i in range(root.childCount()):
-            package = root.child(i)
-            if package.checkState(0) != Qt.Unchecked:
-
-                for j in range(package.childCount()):
-                    module = package.child(j)
-                    if module.checkState(0) != Qt.Unchecked:
-
-                        for k in range(module.childCount()):
-                            anim = module.child(k)
-                            if anim.checkState(0) != Qt.Unchecked:
-
-                                for l in range(anim.childCount()):
-                                    stage = anim.child(l)
-
-                                    if stage.checkState(0) != Qt.Unchecked:
-                                        packageName = package.text(AnimTreeWidget.COLUMN.NAME.value)
-                                        moduleName = module.text(AnimTreeWidget.COLUMN.NAME.value)
-                                        animName = anim.text(AnimTreeWidget.COLUMN.NAME.value)
-                                        stageName = stage.text(AnimTreeWidget.COLUMN.NAME.value)
-                                        animId = stage.text(AnimTreeWidget.COLUMN.ID.value)
-
-                                        animInfo = (animId, packageName, moduleName, animName, stageName)
-                                        checkedAnimsInfo.append(animInfo)
-        return checkedAnimsInfo
 
     @staticmethod
     def create_dir(path):

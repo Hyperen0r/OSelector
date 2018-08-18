@@ -1,3 +1,4 @@
+import xml.etree.ElementTree as ET
 import widget.AnimTreeWidget
 import math
 from PyQt5.QtCore import Qt
@@ -40,7 +41,8 @@ class AnimTreeItem(QTreeWidgetItem):
                 child = self.takeChild(index+1)
                 if not child:
                     child = AnimTreeItem()
-                child.setText(0, "Set " + str(i+1))
+                if child.bIsSplitter:
+                    child.setText(0, "Set " + str(i+1))
                 splitter.addChild(child)
 
             splitter = self.insertSplitter()
@@ -49,11 +51,37 @@ class AnimTreeItem(QTreeWidgetItem):
 
         return self.addChild(item)
 
+    def animationCount(self, state=Qt.Unchecked):
+        if self.bIsSplitter or not self.isAnim():
+            counter = 0
+            for i in range(self.childCount()):
+                child = self.child(i)
+                if child.checkState(0) != state:
+                    counter += child.animationCount(state)
+            return counter
+        else:
+            return 1
+
+    def toXML(self, parent, level, config):
+        if self.bIsSplitter or not self.isAnim():
+            elt = ET.SubElement(parent, "folder" + str(level))
+            elt.set("n", self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value))
+            elt.set("i", config.get("PLUGIN", "setFolderImage"))
+
+            for i in range(self.childCount()):
+                child = self.child(i)
+                if child.checkState(0) != Qt.Unchecked:
+                    child.toXML(elt, level + 1, config)
+        else:
+            entry = ET.SubElement(parent, "entry")
+            entry.set("n", self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value))
+            entry.set("i", config.get("PLUGIN", "stageFolderImage"))
+            entry.set("id", self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ID.value))
+
     def flags(self):
         return super().flags() | Qt.ItemIsTristate | Qt.ItemIsEditable | Qt.ItemIsUserCheckable
 
     def nextSplitterIndex(self):
-        print(self.splitterIndex)
         return self.splitterIndex
 
     def setNextSplitterIndex(self, num=-1):
@@ -77,6 +105,11 @@ class AnimTreeItem(QTreeWidgetItem):
         self.setNextSplitterIndex(index+1)
         return splitter
 
+    def isAnim(self):
+        if self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ID.value):
+            return True
+        return False
+
     def setAnimation(self, animation, i):
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value, "PlaceHolder")
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.TYPE.value, animation.type.name)
@@ -84,3 +117,4 @@ class AnimTreeItem(QTreeWidgetItem):
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ID.value, str(animation.stages[i]))
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.FILE.value, str(animation.stages_file[i]))
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ANIM_OBJ.value, str(animation.stages_obj[i]))
+
