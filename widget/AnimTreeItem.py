@@ -1,4 +1,5 @@
 import widget.AnimTreeWidget
+import math
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QTreeWidgetItem
 
@@ -8,6 +9,9 @@ class AnimTreeItem(QTreeWidgetItem):
         super().__init__(*__args)
         self.setFlags(self.flags())
         self.setCheckState(0, Qt.Checked)
+        self.splitterCounter = 0
+        self.splitterIndex = 0
+        self.levelTwoCounter = 0
         self.maxChildCount = 25
         self.bIsSplitter = False
 
@@ -15,24 +19,28 @@ class AnimTreeItem(QTreeWidgetItem):
         # If there are already splitter let's try to add the item to the first available
         for i in range(self.childCount()):
             splitter = self.child(i)
-            if splitter.isSplitter():
-                if splitter.childCount() < self.maxChildCount:
+            if splitter.bIsSplitter:
+                if splitter.childCount() < splitter.maxChildCount:
                     return splitter.addChild(item)
 
         # If none is available, add an other splitter, if needed
-        if self.splitterCount() > 0:
-            if self.splitterCount() < self.maxChildCount:
-                splitter = self.insertSplitter()
-                return splitter.addChild(item)
+        if self.nextSplitterIndex() > 0 and self.nextSplitterIndex() < self.maxChildCount:
+            index = self.nextSplitterIndex()
+            splitter = self.insertSplitter(index)
+
+            return splitter.addChild(item)
 
         if self.childCount() == self.maxChildCount:
-            if self.splitterCount() == self.maxChildCount:
-                splitter = self.insertSplitter("1", 0)
-            else:
-                splitter = self.insertSplitter()
-
+            index = self.nextSplitterIndex()
+            if self.splitterLevel() > 1:
+                self.levelTwoCounter += 1
+                index = (self.levelTwoCounter)
+            splitter = self.insertSplitter(index)
             for i in range(self.childCount()):
-                child = self.takeChild(1)
+                child = self.takeChild(index+1)
+                if not child:
+                    child = AnimTreeItem()
+                child.setText(0, "Set " + str(i+1))
                 splitter.addChild(child)
 
             splitter = self.insertSplitter()
@@ -44,29 +52,30 @@ class AnimTreeItem(QTreeWidgetItem):
     def flags(self):
         return super().flags() | Qt.ItemIsTristate | Qt.ItemIsEditable | Qt.ItemIsUserCheckable
 
-    def splitterCount(self):
-        counter = 0
-        for i in range(self.childCount()):
-            child = self.child(i)
-            if child.isSplitter():
-                counter += 1
-        return counter
+    def nextSplitterIndex(self):
+        print(self.splitterIndex)
+        return self.splitterIndex
 
-    def insertSplitter(self, text="", index=-1):
-        splitter = AnimTreeItem()
+    def setNextSplitterIndex(self, num=-1):
+        if num == -1:
+            self.splitterIndex = (self.splitterIndex+1 % self.maxChildCount)
+        else:
+            self.splitterIndex = (num % self.maxChildCount)
+        return
 
-        if not text:
-            text = str(self.splitterCount() + 1)
+    def splitterLevel(self):
+        return math.floor(self.splitterCounter / self.maxChildCount)
+
+    def insertSplitter(self, index=-1):
         if index == -1:
-            index = self.splitterCount()
-
-        splitter.setText(0, "Set " + text)
-        splitter.setIsSplitter(True)
+            index = self.nextSplitterIndex()
+        splitter = AnimTreeItem()
+        splitter.setText(0, "Set " + str(index+1))
+        splitter.bIsSplitter = True
         self.insertChild(index, splitter)
+        self.splitterCounter += 1
+        self.setNextSplitterIndex(index+1)
         return splitter
-
-    def setIsSplitter(self, bool):
-        self.bIsSplitter = bool
 
     def setAnimation(self, animation, i):
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value, "PlaceHolder")
@@ -75,7 +84,3 @@ class AnimTreeItem(QTreeWidgetItem):
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ID.value, str(animation.stages[i]))
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.FILE.value, str(animation.stages_file[i]))
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ANIM_OBJ.value, str(animation.stages_obj[i]))
-
-    def isSplitter(self):
-        return self.bIsSplitter
-
