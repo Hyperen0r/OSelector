@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 import widget.AnimTreeWidget
 import math
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QBrush
 from PyQt5.QtWidgets import QTreeWidgetItem
 
 class AnimTreeItem(QTreeWidgetItem):
@@ -66,7 +67,7 @@ class AnimTreeItem(QTreeWidgetItem):
         if self.bIsSplitter or not self.isAnim():
             elt = ET.SubElement(parent, "folder" + str(level))
             elt.set("n", self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value))
-            elt.set("i", config.get("PLUGIN", "setFolderImage"))
+            elt.set("i", config.get("PLUGIN", "defaultFolderIcon"))
 
             for i in range(self.childCount()):
                 child = self.child(i)
@@ -75,7 +76,7 @@ class AnimTreeItem(QTreeWidgetItem):
         else:
             entry = ET.SubElement(parent, "entry")
             entry.set("n", self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value))
-            entry.set("i", config.get("PLUGIN", "stageFolderImage"))
+            entry.set("i", config.get("PLUGIN", "defaultAnimationIcon"))
             entry.set("id", self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ID.value))
 
     def flags(self):
@@ -110,8 +111,12 @@ class AnimTreeItem(QTreeWidgetItem):
             return True
         return False
 
+    def setColor(self, color=Qt.black):
+        brush = QBrush(color)
+        self.setForeground(0, brush)
+
     def setAnimation(self, animation, i):
-        self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value, "PlaceHolder")
+        self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value, animation.stages[i][-25:])
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.TYPE.value, animation.type.name)
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.OPTIONS.value, str([x.name for x in animation.options]))
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ID.value, str(animation.stages[i]))

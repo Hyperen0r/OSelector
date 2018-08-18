@@ -83,6 +83,52 @@ class AnimTreeWidget(QTreeWidget):
                 self.cleanup(child)
         return hasBeenRemoved
 
+    def createFromPackages(self, packages):
+
+        self.clear()
+        animations = []
+        duplicateCounter = 0
+
+        root = widget.AnimTreeItem.AnimTreeItem(self)
+        for package in packages:
+            section = widget.AnimTreeItem.AnimTreeItem()
+            section.setText(0, package.name)
+            root.addChildWithSplitter(section)
+
+            for module in package.items:
+                moduleSection = widget.AnimTreeItem.AnimTreeItem()
+                moduleSection.setText(0, module.name)
+                section.addChildWithSplitter(moduleSection)
+
+                previousAnimation = ""
+                animSection = None
+                counter = 1
+                for animation in module.items:
+                    if animation.name != previousAnimation or not animSection:
+                        previousAnimation = animation.name
+                        counter = 1
+                        animSection = widget.AnimTreeItem.AnimTreeItem()
+                        animSection.setText(0, animation.name)
+                        moduleSection.addChildWithSplitter(animSection)
+
+                    for i, stage in enumerate(animation.stages):
+                        if animation.stages[i] in animations:
+                            duplicateCounter += 1
+                        else:
+                            stageSection = widget.AnimTreeItem.AnimTreeItem()
+                            stageSection.setAnimation(animation, i)
+                            animSection.addChildWithSplitter(stageSection)
+                            counter += 1
+                            animations.append(animation.stages[i])
+
+        invisibleRoot = self.invisibleRootItem()
+        for i in range(root.childCount()):
+            child = root.takeChild(0)
+            invisibleRoot.addChild(child)
+        invisibleRoot.removeChild(root)
+
+        return duplicateCounter
+
     def openMenu(self, position):
         selection = self.selectedItems()
         if selection:
@@ -149,7 +195,7 @@ class AnimTreeWidget(QTreeWidget):
         root = self.invisibleRootItem()
         folder0 = ET.Element("folder0")
         folder0.set("n", config.get("PLUGIN", "name"))
-        folder0.set("i", config.get("PLUGIN", "image"))
+        folder0.set("i", config.get("PLUGIN", "defaultPackageIcon"))
 
         for i in range(root.childCount()):
             child = root.child(i)

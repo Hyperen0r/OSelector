@@ -10,16 +10,21 @@ import os
 import sys
 import xml.etree.ElementTree as ET
 
+from enum import Enum
 from data.Animation import Animation
 from data.NamedContainer import NamedContainer
 from widget.AnimTreeWidget import AnimTreeWidget
-from widget.AnimTreeItem import AnimTreeItem
 from widget.QuickyGui import *
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtWidgets import (QApplication, QWidget, QMessageBox, QDesktopWidget,
-                             QMainWindow, QFileDialog, QHBoxLayout,
-                             QVBoxLayout, QProgressBar)
+                             QMainWindow, QFileDialog, QHBoxLayout, QVBoxLayout)
 
+#TODO Remove comment from line containing an animation
+#TODO Handle maxStringLength (hard coded)
+
+class COLOR(Enum):
+    NORMAL = Qt.black
+    DUPLICATE = Qt.red
 
 class OSelectorWindow(QMainWindow):
 
@@ -45,6 +50,9 @@ class OSelectorWindow(QMainWindow):
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
+
+    def displayLCDAnimChecked(self):
+        self.lcdAnimsChecked.display(self.treeAnimFiles.animationCount())
 
     def initUI(self):
         # ----- FIRST ROW : Scanning for animations files -----
@@ -94,10 +102,6 @@ class OSelectorWindow(QMainWindow):
         self.groupBoxGenerate.setLayout(hbox)
         self.mainLayout.addWidget(self.groupBoxGenerate)
 
-        # ----- FOURTH ROW : Progress Bar -----
-        self.progressBar = QProgressBar(self)
-        self.mainLayout.addWidget(self.progressBar)
-
     def initSettings(self, argv):
         self.path = argv[0].rsplit('/', 1)[0]
 
@@ -105,7 +109,7 @@ class OSelectorWindow(QMainWindow):
         self.config = configparser.ConfigParser()
         self.config.read(self.config_path)
 
-        if not self.config.get("LOG", "enabled"):
+        if self.config.get("LOG", "enabled"):
             logging.basicConfig(filename=self.config.get("LOG", "name"), level=logging.DEBUG, format='[%(levelname)s] : %(message)s')
         else:
             logger = logging.getLogger()
@@ -133,12 +137,8 @@ class OSelectorWindow(QMainWindow):
             with open(self.config_path, 'w') as configFile:
                 self.config.write(configFile)
 
-    def displayLCDAnimChecked(self):
-        self.lcdAnimsChecked.display(self.treeAnimFiles.animationCount())
-
     def scanFolder(self):
 
-        self.progressBar.setRange(0, 0)
         self.groupBoxGenerate.setDisabled(True)
         self.groupBoxAnim.setDisabled(True)
         self.groupBoxScanning.setDisabled(True)
@@ -149,6 +149,7 @@ class OSelectorWindow(QMainWindow):
         previousPackage = ""
         animPackage = None
         counter = 0
+        maxStringLength = self.config.get("PLUGIN", "maxstringlength")
 
         if scanDir:
 
@@ -159,8 +160,8 @@ class OSelectorWindow(QMainWindow):
                 for file in files:
                     if file.startswith("FNIS") and file.endswith("List.txt"):
                         animFile = os.path.join(root, file)
-                        package = animFile.replace(scanDir + '\\', '').split('\\', 1)[0]
-                        module = animFile.replace(scanDir + '\\', '').rsplit('\\', 1)[1][5:-9]
+                        package = animFile.replace(scanDir + '\\', '').split('\\', 1)[0][:26]
+                        module = animFile.replace(scanDir + '\\', '').rsplit('\\', 1)[1][5:-9][-25:]
 
                         if package != previousPackage:
                             if animPackage:
@@ -179,6 +180,7 @@ class OSelectorWindow(QMainWindow):
 
                                 logging.debug("        animType : " + animType.name + " || Line : " + line.strip())
 
+                                name = animId.replace(package, "").replace(module, "").replace("_","")
                                 if animType == Animation.TYPE.BASIC:
                                     anim = Animation(animType, animOptions, animId, animFile, animObj)
                                     animModule.addItem(anim)
@@ -210,7 +212,8 @@ class OSelectorWindow(QMainWindow):
                                 previousPackage = package
                                 packages.append(animPackage)
 
-        self.createTreeByMod(packages)
+        duplicate = self.treeAnimFiles.createFromPackages(packages)
+        QMessageBox.information(self, "Results", str(duplicate) + " duplicates found (Not added)")
         self.treeAnimFiles.cleanup()
         self.treeAnimFiles.itemClicked.connect(self.displayLCDAnimChecked)
         self.lcdAnimsFound.display(counter)
@@ -219,51 +222,11 @@ class OSelectorWindow(QMainWindow):
         self.groupBoxAnim.setDisabled(False)
         self.groupBoxScanning.setDisabled(False)
 
-    def createTreeByMod(self, packages):
-
-        self.treeAnimFiles.clear()
-
-        root = AnimTreeItem(self.treeAnimFiles)
-        for package in packages:
-            section = AnimTreeItem()
-            section.setText(0, package.name)
-            root.addChildWithSplitter(section)
-
-            for module in package.items:
-                moduleSection = AnimTreeItem()
-                moduleSection.setText(0, module.name)
-                section.addChildWithSplitter(moduleSection)
-
-                previousAnimation = ""
-                animSection = None
-                counter = 1
-                for animation in module.items:
-                    if animation.name != previousAnimation or not animSection:
-                        previousAnimation = animation.name
-                        counter = 1
-                        animSection = AnimTreeItem()
-                        animSection.setText(0, animation.name)
-                        moduleSection.addChildWithSplitter(animSection)
-
-                    for i, stage in enumerate(animation.stages):
-                        stageSection = AnimTreeItem()
-                        stageSection.setAnimation(animation, i)
-                        animSection.addChildWithSplitter(stageSection)
-                        counter += 1
-
-        invisibleRoot = self.treeAnimFiles.invisibleRootItem()
-        for i in range(root.childCount()):
-            child = root.takeChild(0)
-            invisibleRoot.addChild(child)
-        invisibleRoot.removeChild(root)
-
-        self.progressBar.setRange(0, 1)
-
     def generatePlugin(self):
         logging.info("=============== GENERATING PLUGIN ===============")
 
-        pluginPath = self.config.get("PATHS", "ModFolder") + "/" + self.config.get("PLUGIN", "Name") + "/" + self.config.get("PATHS", "Plugin") + "/"
-        pluginInstallPath = self.config.get("PATHS", "ModFolder") + "/" + self.config.get("PLUGIN", "Name") + "/" + self.config.get("PATHS", "installPlugin") + "/"
+        pluginPath = self.config.get("PATHS", "ModFolder") + "/" + self.config.get("PLUGIN", "Name") + "/" + self.config.get("PATHS", "Plugin")
+        pluginInstallPath = self.config.get("PATHS", "ModFolder") + "/" + self.config.get("PLUGIN", "Name") + "/" + self.config.get("PATHS", "installPlugin")
 
         self.create_dir(pluginPath)
         self.create_dir(pluginInstallPath)
@@ -273,49 +236,13 @@ class OSelectorWindow(QMainWindow):
         # File allowing the plugin to be recognized by OSA
         open(pluginInstallPath + "/" + self.config.get("PLUGIN", "osplug") + ".osplug", "w")
 
-        """
-        header = ET.Element("global")
-        header.set("id", self.config.get("PLUGIN", "Name"))
-        
-        folderStyle = ET.Element("folderStyle")
-        folderStyle.set("fc", "FFFFFF")
-        folderStyle.set("h", "h_bigdot_op")
-        folderStyle.set("th", "1.5")
-        folderStyle.set("b", "")
-        folderStyle.set("lc", "FFFFFF")
-        folderStyle.set("h", "!")
-        folderStyle.set("sh", "sq")
-        folderStyle.set("sth", "3")
-        folderStyle.set("sb", "000000")
-        folderStyle.set("slc", "!")
-
-        entryStyle = ET.Element("entryStyle")
-        entryStyle.set("fc", "FFFFFF")
-        entryStyle.set("h", "h_bigdot_op")
-        entryStyle.set("th", "1.5")
-        entryStyle.set("b", "")
-        entryStyle.set("lc", "FFFFFF")
-        entryStyle.set("h", "!")
-        entryStyle.set("sh", "ci")
-        entryStyle.set("sth", "3")
-        entryStyle.set("sb", "e85670")
-        entryStyle.set("slc", "FFFFFF")
-        """
-
         XMLRoot = self.treeAnimFiles.toXML(self.config)
 
         with open(pluginPath + self.config.get("PLUGIN", "osplug") + ".myo", "w") as file:
-            """
-            data = ET.tostring(header, "unicode")
-            file.write(data)
-            data = ET.tostring(folderStyle, "unicode")
-            file.write(data)
-            data = ET.tostring(entryStyle, "unicode")
-            file.write(data)
-            """
             data = ET.tostring(XMLRoot, "unicode")
             file.write(data)
-            print("Done !")
+
+        QMessageBox.information(self, "Results", "Plugin Generation Done !\n ----- Plugin path -----\n" + pluginPath)
 
     @staticmethod
     def create_dir(path):
