@@ -7,6 +7,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QHeaderView, QMenu, QTreeWidget
 from PyQt5.QtGui import QCursor
 
+
 class AnimTreeWidget(QTreeWidget):
 
     class ROLE(Enum):
@@ -28,47 +29,115 @@ class AnimTreeWidget(QTreeWidget):
         self.header().setDefaultAlignment(Qt.AlignHCenter)
         self.header().setMinimumSectionSize(85)
         self.header().setSectionResizeMode(QHeaderView.ResizeToContents)
-        self.header().setFont(getNormalFont())
-        self.setHeaderLabels([AnimTreeWidget.COLUMN.NAME.name, AnimTreeWidget.COLUMN.TYPE.name, AnimTreeWidget.COLUMN.OPTIONS.name, AnimTreeWidget.COLUMN.ID.name, AnimTreeWidget.COLUMN.FILE.name, AnimTreeWidget.COLUMN.ANIM_OBJ.name])
+        self.header().setFont(get_normal_font())
+        self.setHeaderLabels([AnimTreeWidget.COLUMN.NAME.name,
+                              AnimTreeWidget.COLUMN.TYPE.name,
+                              AnimTreeWidget.COLUMN.OPTIONS.name,
+                              AnimTreeWidget.COLUMN.ID.name,
+                              AnimTreeWidget.COLUMN.FILE.name,
+                              AnimTreeWidget.COLUMN.ANIM_OBJ.name])
         self.setColumnWidth(AnimTreeWidget.COLUMN.NAME.value, 400)
         self.setColumnWidth(AnimTreeWidget.COLUMN.TYPE.value, 100)
         self.setColumnWidth(AnimTreeWidget.COLUMN.ID.value, 200)
 
         self.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.customContextMenuRequested.connect(self.openMenu)
+        self.customContextMenuRequested.connect(self.open_menu)
         self.setAlternatingRowColors(True)
         self.setEditTriggers(QTreeWidget.DoubleClicked | QTreeWidget.EditKeyPressed)
         self.setSelectionMode(QTreeWidget.ContiguousSelection)
 
-    def animationCount(self, state=Qt.Unchecked):
+    def action_insert_parent(self, item=None, parent=None):
+        if not parent:
+            parent = widget.AnimTreeItem.AnimTreeItem()
+            parent.setText(0, "New Parent")
+
+        if not item:
+            items = self.selectedItems()
+            for item in items:
+                self.action_insert_parent(item, parent)
+            return True
+
+        actual_parent = item.parent()
+        if not actual_parent:
+            actual_parent = self.invisibleRootItem()
+
+        index = actual_parent.indexOfChild(item)
+        item = actual_parent.takeChild(index)
+        parent.addChild(item)
+        actual_parent.insertChild(index, parent)
+        return
+
+    def action_move_up(self, item=None):
+        if not item:
+            items = self.selectedItems()
+            for item in items:
+                self.action_move_up(item)
+            return True
+
+        # TODO Test if correct
+        n1 = item.parent()
+        if not n1:
+            n1 = self.invisibleRootItem()
+            for i in range(item.childCount()):
+                self.action_move_up(item.child(0))
+            self.action_remove_from_parent(item)
+            return True
+
+        n2 = n1.parent()
+        if not n2:
+            n2 = self.invisibleRootItem()
+
+        item_index = n1.indexOfChild(item)
+        item = n1.takeChild(item_index)
+        n2.addChild(item)
+        return True
+
+    def action_remove_from_parent(self, item=None):
+        if not item:
+            items = self.selectedItems()
+            for item in items:
+                self.action_remove_from_parent(item)
+            return True
+
+        parent = item.parent()
+        if not parent:
+            parent = self.invisibleRootItem()
+        parent.removeChild(item)
+
+    def action_uncheck_all(self):
+        root = self.invisibleRootItem()
+        for i in range(root.childCount()):
+            self.check_children(root.child(i), Qt.Unchecked)
+
+    def animation_count(self, state=Qt.Unchecked):
         root = self.invisibleRootItem()
 
         counter = 0
         for i in range(root.childCount()):
             child = root.child(i)
             if child.checkState(0) != state:
-                counter += child.animationCount(state)
+                counter += child.animation_count(state)
         return counter
 
-    def checkAll(self):
+    def check_all(self):
         root = self.invisibleRootItem()
         for i in range(root.childCount()):
-            self.checkSubTree(root.child(i), Qt.Checked)
+            self.check_children(root.child(i), Qt.Checked)
 
-    def checkSubTree(self, item, state):
+    def check_children(self, item, state):
         item.setCheckState(0, state)
         for i in range(item.childCount()):
-            self.checkSubTree(item.child(i), state)
+            self.check_children(item.child(i), state)
 
     def cleanup(self, item=None):
-        hasBeenRemoved = False
+        has_been_removed = False
         if not item:
             item = self.invisibleRootItem()
 
         if not item.text(AnimTreeWidget.COLUMN.ID.value):
             if item.childCount() == 0:
-                self.removeFromParent(item)
-                hasBeenRemoved = True
+                self.action_remove_from_parent(item)
+                has_been_removed = True
             else:
                 counter = 0
                 for i in range(item.childCount()):
@@ -77,121 +146,75 @@ class AnimTreeWidget(QTreeWidget):
 
             if item.childCount() == 1:
                 child = item.child(0)
-                if self.moveUp(child):
-                    self.removeFromParent(item)
-                    hasBeenRemoved = True
+                if self.action_move_up(child):
+                    self.action_remove_from_parent(item)
+                    has_been_removed = True
                 self.cleanup(child)
-        return hasBeenRemoved
+        return has_been_removed
 
-    def createFromPackages(self, packages):
+    def create_from_packages(self, packages):
 
         self.clear()
         animations = []
-        duplicateCounter = 0
+        duplicate_counter = 0
 
         root = widget.AnimTreeItem.AnimTreeItem(self)
         for package in packages:
             section = widget.AnimTreeItem.AnimTreeItem()
             section.setText(0, package.name)
-            root.addChildWithSplitter(section)
+            root.add_nested_child(section)
 
             for module in package.items:
-                moduleSection = widget.AnimTreeItem.AnimTreeItem()
-                moduleSection.setText(0, module.name)
-                section.addChildWithSplitter(moduleSection)
+                module_section = widget.AnimTreeItem.AnimTreeItem()
+                module_section.setText(0, module.name)
+                section.add_nested_child(module_section)
 
-                previousAnimation = ""
-                animSection = None
+                previous_animation = ""
+                anim_section = None
                 counter = 1
                 for animation in module.items:
-                    if animation.name != previousAnimation or not animSection:
-                        previousAnimation = animation.name
+                    if animation.name != previous_animation or not anim_section:
+                        previous_animation = animation.name
                         counter = 1
-                        animSection = widget.AnimTreeItem.AnimTreeItem()
-                        animSection.setText(0, animation.name)
-                        moduleSection.addChildWithSplitter(animSection)
+                        anim_section = widget.AnimTreeItem.AnimTreeItem()
+                        anim_section.setText(0, animation.name)
+                        module_section.add_nested_child(anim_section)
 
                     for i, stage in enumerate(animation.stages):
                         if animation.stages[i] in animations:
-                            duplicateCounter += 1
+                            duplicate_counter += 1
                         else:
-                            stageSection = widget.AnimTreeItem.AnimTreeItem()
-                            stageSection.setAnimation(animation, i)
-                            animSection.addChildWithSplitter(stageSection)
+                            stage_section = widget.AnimTreeItem.AnimTreeItem()
+                            stage_section.set_animation(animation, i)
+                            anim_section.add_nested_child(stage_section)
                             counter += 1
                             animations.append(animation.stages[i])
 
-        invisibleRoot = self.invisibleRootItem()
+        invisible_root = self.invisibleRootItem()
         for i in range(root.childCount()):
             child = root.takeChild(0)
-            invisibleRoot.addChild(child)
-        invisibleRoot.removeChild(root)
+            invisible_root.addChild(child)
+        invisible_root.removeChild(root)
 
-        return duplicateCounter
+        return duplicate_counter
 
-    def openMenu(self, position):
+    def open_menu(self):
         selection = self.selectedItems()
         if selection:
             menu = QMenu()
-            menu.addAction("Check All", self.checkAll)
-            menu.addAction("Uncheck All", self.uncheckAll)
+            menu.addAction("Check All", self.check_all)
+            menu.addAction("Uncheck All", self.action_uncheck_all)
             menu.addAction("Cleanup", self.cleanup)
             menu.addSeparator()
             if selection[0].parent():
-                menu.addAction("Move Up", self.moveUp)
+                menu.addAction("Move Up", self.action_move_up)
                 menu.addSeparator()
-            menu.addAction("Insert parent", self.insertParent)
-            menu.addAction("Remove", self.removeFromParent)
+            menu.addAction("Insert parent", self.action_insert_parent)
+            menu.addAction("Remove", self.action_remove_from_parent)
             menu.exec_(QCursor.pos())
         return
 
-    def insertParent(self, item=None, parent=None):
-        if parent == None:
-            parent = widget.AnimTreeItem.AnimTreeItem()
-            parent.setText(0, "New Parent")
-
-        if not item:
-            items = self.selectedItems()
-            for item in items:
-                self.insertParent(item, parent)
-            return True
-
-        actualParent = item.parent()
-        if not actualParent:
-            actualParent = self.invisibleRootItem()
-
-        index = actualParent.indexOfChild(item)
-        item = actualParent.takeChild(index)
-        parent.addChild(item)
-        actualParent.insertChild(index, parent)
-        return
-
-    def moveUp(self, item=None):
-        if not item:
-            items = self.selectedItems()
-            for item in items:
-                self.moveUp(item)
-            return True
-
-        n1 = item.parent()
-        if not n1:
-            n1 = self.invisibleRootItem()
-            for i in range(item.childCount()):
-                self.moveUp(item.child(0))
-            self.removeFromParent(item)
-            return True
-
-        n2 = n1.parent()
-        if not n2:
-            n2 = self.invisibleRootItem()
-
-        itemIndex = n1.indexOfChild(item)
-        n1Index = n2.indexOfChild(n1)
-        item = n1.takeChild(itemIndex)
-        n2.addChild(item)
-        return True
-
-    def toXML(self, config):
+    def to_xml(self, config):
         root = self.invisibleRootItem()
         folder0 = ET.Element("folder0")
         folder0.set("n", config.get("PLUGIN", "name"))
@@ -200,23 +223,5 @@ class AnimTreeWidget(QTreeWidget):
         for i in range(root.childCount()):
             child = root.child(i)
             if child.checkState(0) != Qt.Unchecked:
-                child.toXML(folder0, 1, config)
+                child.to_xml(folder0, 1, config)
         return folder0
-
-    def removeFromParent(self, item=None):
-        if not item:
-            items = self.selectedItems()
-            for item in items:
-                self.removeFromParent(item)
-            return True
-
-        parent = item.parent()
-        if not parent:
-            parent = self.invisibleRootItem()
-        parent.removeChild(item)
-
-    def uncheckAll(self):
-        root = self.invisibleRootItem()
-        for i in range(root.childCount()):
-            self.checkSubTree(root.child(i), Qt.Unchecked)
-

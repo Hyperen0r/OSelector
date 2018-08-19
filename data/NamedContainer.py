@@ -4,6 +4,5 @@ class NamedContainer:
         self.name = name
         self.items = []
 
-    def addItem(self, item):
+    def add_item(self, item):
         self.items.append(item)
-

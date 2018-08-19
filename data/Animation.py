@@ -1,6 +1,7 @@
 import re
 from enum import Enum
 
+
 class Animation:
 
     class TYPE(Enum):
@@ -26,41 +27,49 @@ class Animation:
         TRIGGER = "(?:,|-)(T[^\/]*\/\d*\.\d*)"
         NONE = ""
 
-    def __init__(self, _type=TYPE.UNKNOWN, options=[], animId="", animFile="", animObj=""):
+    def __init__(self, package="", module="", _type=TYPE.UNKNOWN, options=None, animId="", animFile="", animObj=""):
+        if not options:
+            options = []
+
+        self.package = package
+        self.module = module
+        self.type = _type
+        self.options = options
+
         self.stages = []
         self.stages_file = []
         self.stages_obj = []
 
-        self.type = _type
-        self.options = options
         self.stages.append(animId)
         self.stages_file.append(animFile)
         self.stages_obj.append(animObj)
 
-        self.name = self.stages[0].rsplit("_", 2)[0]
-
-    def addStage(self, animId, animFile, animObj):
+    def add_stage(self, animId, animFile, animObj):
         self.stages.append(animId)
         self.stages_file.append(animFile)
         self.stages_obj.append(animObj)
+
+    def parse_name(self, index):
+        # TODO Improve naming for animation
+        return self.stages[index]
 
     @staticmethod
-    def parseLine(line):
-        # See FNIS_FNISBase_List.txt for more information (in FNIS Behavior <Version>/Meshes/Character/animations/FNISBase
+    def parse_line(line):
+        # See FNIS_FNISBase_List.txt for more information (in FNIS Behavior folder)
         regexp = re.compile(r"^(\S*)(?: -(\S*))? (\S*) (\S*)((?:\s(?:\S*))*)")
         found = regexp.search(line)
         if found:
-            type = found.group(1)  # Single word (s + b ...)
-            options = found.group(2)  # o,a,Tn,B.2, ...
-            animId = found.group(3)  # ANIM_ID_ ...
-            animFile = found.group(4)  # <path/to/file>.hkx
-            animObj = found.group(5)  # Chair Ball ...
-            return Animation.getAnimTypeFromString(type), Animation.getOptionsFromString(
-                options), animId, animFile, animObj
+            anim_type = found.group(1)  # Single word (s + b ...)
+            anim_options = found.group(2)  # o,a,Tn,B.2, ...
+            anim_id = found.group(3)  # ANIM_ID_ ...
+            anim_file = found.group(4)  # <path/to/file>.hkx
+            anim_obj = found.group(5)  # Chair Ball ...
+            return Animation.get_anim_type_from_string(anim_type), Animation.get_options_from_string(
+                anim_options), anim_id, anim_file, anim_obj
         return Animation.TYPE.UNKNOWN, [], "", "", ""
 
     @staticmethod
-    def getAnimTypeFromString(string):
+    def get_anim_type_from_string(string):
         for animType in Animation.TYPE:
             regexp = re.compile(animType.value)
             found = regexp.search(string)
@@ -69,7 +78,7 @@ class Animation:
         return Animation.TYPE.UNKNOWN
 
     @staticmethod
-    def getOptionsFromString(string):
+    def get_options_from_string(string):
         if string:
             options = []
             for animOptions in Animation.OPTION:
@@ -78,4 +87,3 @@ class Animation:
                 if found:
                     options.append(animOptions)
         return [Animation.OPTION.NONE]
-

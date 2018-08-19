@@ -1,65 +1,45 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-import configparser
-import logging
-# ----------------------------
-# ---------- IMPORT ----------
-# ----------------------------
 import os
 import sys
+import logging
 import xml.etree.ElementTree as ET
 
 from enum import Enum
+from util.utils import indent, create_dir
+from util.Config import get_config, save_config
 from data.Animation import Animation
 from data.NamedContainer import NamedContainer
-from widget.AnimTreeWidget import AnimTreeWidget
 from widget.QuickyGui import *
-from PyQt5.QtCore import QSize, Qt
-from PyQt5.QtWidgets import (QApplication, QWidget, QMessageBox, QDesktopWidget,
-                             QMainWindow, QFileDialog, QHBoxLayout, QVBoxLayout)
+from widget.MainWindow import MainWindow
+from widget.AnimTreeWidget import AnimTreeWidget
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import (QApplication, QMessageBox, QFileDialog, QHBoxLayout, QVBoxLayout)
 
-#TODO Remove comment from line containing an animation
-#TODO Handle maxStringLength (hard coded)
+
+# TODO Remove comment from line containing an animation
+# TODO Handle maxStringLength (hard coded)
+
 
 class COLOR(Enum):
     NORMAL = Qt.black
     DUPLICATE = Qt.red
 
-class OSelectorWindow(QMainWindow):
 
-    def __init__(self, argv):
-        super().__init__()
+class OSelectorWindow(MainWindow):
 
-        self.setWindowTitle('OSelector - Generation Tool')
-        self.setMinimumSize(QSize(1200, 1000))
-        self.center()
+    def __init__(self):
+        super().__init__("OSelector Tool")
 
-        self.mainLayout = QVBoxLayout()
-        self.centralWidget = QWidget(self)
-        self.centralWidget.setLayout(self.mainLayout)
-        self.setCentralWidget(self.centralWidget)
+        self.init_settings()
 
-        self.initUI()
-        self.initSettings(argv)
-
-        self.show()
-
-    def center(self):
-        qr = self.frameGeometry()
-        cp = QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
-
-    def displayLCDAnimChecked(self):
-        self.lcdAnimsChecked.display(self.treeAnimFiles.animationCount())
-
-    def initUI(self):
+    def init_ui(self):
         # ----- FIRST ROW : Scanning for animations files -----
-        self.groupBoxScanning = createGroupBox("STEP I - Scan")
-        self.buttonScan = createButton(self, "Scan for animations", self.scanFolder)
-        labelAnimsFound = createLabel("Animations found : ")
-        self.lcdAnimsFound = createLCD(self)
+        self.groupBoxScanning = create_group_box("STEP I - Scan")
+        self.buttonScan = create_button(self, "Scan for animations", self.scan_folder)
+        labelAnimsFound = create_label("Animations found : ")
+        self.lcdAnimsFound = create_lcd(self)
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.buttonScan)
@@ -71,16 +51,16 @@ class OSelectorWindow(QMainWindow):
         self.mainLayout.addWidget(self.groupBoxScanning)
 
         # ----- SECOND ROW : List animations files -----
-        self.groupBoxAnim = createGroupBox("STEP II - Select")
+        self.groupBoxAnim = create_group_box("STEP II - Select")
         self.treeAnimFiles = AnimTreeWidget()
 
         vbox = QVBoxLayout()
         vbox.addWidget(self.treeAnimFiles)
 
         hbox = QHBoxLayout()
-        hbox.addWidget(createButton(self, "Check All", self.treeAnimFiles.checkAll))
-        hbox.addWidget(createButton(self, "Uncheck All", self.treeAnimFiles.uncheckAll))
-        hbox.addWidget(createButton(self, "Clean Up", self.treeAnimFiles.cleanup))
+        hbox.addWidget(create_button(self, "Check All", self.treeAnimFiles.check_all))
+        hbox.addWidget(create_button(self, "Uncheck All", self.treeAnimFiles.action_uncheck_all))
+        hbox.addWidget(create_button(self, "Clean Up", self.treeAnimFiles.cleanup))
 
         vbox.addItem(hbox)
 
@@ -88,10 +68,10 @@ class OSelectorWindow(QMainWindow):
         self.mainLayout.addWidget(self.groupBoxAnim)
 
         # ----- THIRD ROW : Generate plugin -----
-        self.groupBoxGenerate = createGroupBox("STEP III - Generate")
-        self.buttonGenerate = createButton(self, "Generate Plugin", self.generatePlugin)
-        labelAnimsChecked = createLabel("Animations checked : ")
-        self.lcdAnimsChecked = createLCD(self)
+        self.groupBoxGenerate = create_group_box("STEP III - Generate")
+        self.buttonGenerate = create_button(self, "Generate Plugin", self.generate_plugin)
+        labelAnimsChecked = create_label("Animations checked : ")
+        self.lcdAnimsChecked = create_lcd(self)
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.buttonGenerate)
@@ -102,159 +82,168 @@ class OSelectorWindow(QMainWindow):
         self.groupBoxGenerate.setLayout(hbox)
         self.mainLayout.addWidget(self.groupBoxGenerate)
 
-    def initSettings(self, argv):
-        self.path = argv[0].rsplit('/', 1)[0]
+    def init_settings(self):
+        if get_config().getboolean("CONFIG", "bFirstTime"):
 
-        self.config_path = self.path + "/ressources/config.cfg"
-        self.config = configparser.ConfigParser()
-        self.config.read(self.config_path)
+            answer = question(self, 'Initialization', "Do you use MO ?")
 
-        if self.config.get("LOG", "enabled"):
-            logging.basicConfig(filename=self.config.get("LOG", "name"), level=logging.DEBUG, format='[%(levelname)s] : %(message)s')
-        else:
-            logger = logging.getLogger()
-            logger.disabled = True
-
-        if self.config.getboolean("CONFIG", "bFirstTime"):
-
-            bUseMo = QMessageBox.question(self, 'Initialization', "Do you use MO ?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-
-            if bUseMo == QMessageBox.Yes:
-                QMessageBox.information(self, "Instuctions for MO users", "Next dialog window will ask you where your Mod Organiser mods/ folder is, thus allowing to install the plugin directly. You will still need to activate it in Mod Organizer left pane. If you don't see the mod, refresh the left pane.")
-                self.config.set("CONFIG", "bUseMo", "True")
+            if answer == QMessageBox.Yes:
+                QMessageBox.information(self, "Instructions for MO users",
+                                        "Next dialog window will ask you where your Mod Organiser mods/ folder is,"
+                                        "thus allowing to install the plugin directly."
+                                        "You will still need to activate it in Mod Organizer left pane."
+                                        "If you don't see the mod, refresh the left pane.")
+                get_config().set("CONFIG", "bUseMo", "True")
             else:
-                QMessageBox.information(self, "Instuctions for Non-MO users", "Next dialog window will ask you to specify a folder location to store the plugin. In order to install it with a mod manager, compress the generated folder (Unless you specified skyrim/data folder")
-                self.config.set("CONFIG", "bUseMo", "False")
+                QMessageBox.information(self, "Instructions for Non-MO users",
+                                        "Next dialog window will ask you to specify a folder to store the plugin."
+                                        "In order to install it with a mod manager, compress the generated folder"
+                                        "(Unless you specified skyrim/data folder")
+                get_config().set("CONFIG", "bUseMo", "False")
 
-            dir = QFileDialog.getExistingDirectory(self, 'Mod folder location', '', QFileDialog.ShowDirsOnly)
+            folder = QFileDialog.getExistingDirectory(self, 'Mod folder location', '', QFileDialog.ShowDirsOnly)
 
-            if dir:
-                self.config.set("PATHS", "ModFolder", str(dir))
+            if folder:
+                get_config().set("PATHS", "ModFolder", str(folder))
 
-            self.config.set("CONFIG", "bFirstTime", "False")
+            get_config().set("CONFIG", "bFirstTime", "False")
+            save_config()
 
-            # Save changes to ini file
-            with open(self.config_path, 'w') as configFile:
-                self.config.write(configFile)
+    def toggle_window(self, state):
+        self.groupBoxGenerate.setDisabled(state)
+        self.groupBoxAnim.setDisabled(state)
+        self.groupBoxScanning.setDisabled(state)
 
-    def scanFolder(self):
+    def scan_folder(self):
 
-        self.groupBoxGenerate.setDisabled(True)
-        self.groupBoxAnim.setDisabled(True)
-        self.groupBoxScanning.setDisabled(True)
+        self.toggle_window(False)
 
-        scanDir = QFileDialog.getExistingDirectory(self, 'Mod folder location', self.config.get("PATHS", "ModFolder"), QFileDialog.ShowDirsOnly)
+        scan_dir = QFileDialog.getExistingDirectory(self, 'Mod folder location',
+                                                    get_config().get("PATHS", "ModFolder"),
+                                                    QFileDialog.ShowDirsOnly)
 
         packages = []
-        previousPackage = ""
-        animPackage = None
+        previous_package = ""
+        anim_package = None
         counter = 0
-        maxStringLength = self.config.get("PLUGIN", "maxstringlength")
+        max_item_string_length = get_config().get("PLUGIN", "maxItemStringLength")
 
-        if scanDir:
+        if scan_dir:
 
             logging.info("=============== SCANNING ===============")
-            logging.info("Scanning directory : " + scanDir)
+            logging.info("Scanning directory : " + scan_dir)
 
-            for root, dirs, files in os.walk(scanDir):
+            for root, dirs, files in os.walk(scan_dir):
                 for file in files:
                     if file.startswith("FNIS") and file.endswith("List.txt"):
-                        animFile = os.path.join(root, file)
-                        package = animFile.replace(scanDir + '\\', '').split('\\', 1)[0][:26]
-                        module = animFile.replace(scanDir + '\\', '').rsplit('\\', 1)[1][5:-9][-25:]
+                        anim_file = os.path.join(root, file).replace(scan_dir + '\\', '')
+                        package = anim_file.split('\\', 1)[0][slice(0, max_item_string_length)]
+                        module = anim_file.rsplit('\\', 1)[1][5:-9][slice(-max_item_string_length, None)]
 
-                        if package != previousPackage:
-                            if animPackage:
-                                animPackage.items.sort(key=lambda x: x.name, reverse=False)
-                            animPackage = NamedContainer(package)
-                        animModule = NamedContainer(module)
+                        if package != previous_package:
+                            if anim_package:
+                                anim_package.items.sort(key=lambda x: x.name, reverse=False)
+                            anim_package = NamedContainer(package)
+                        anim_module = NamedContainer(module)
 
-                        logging.info("       Package : " + str(package))
-                        logging.info("        Module : " + str(module))
-                        logging.info("       Reading : " + animFile)
+                        logging.info(indent("Package : " + str(package), 1))
+                        logging.info(indent("Module  : " + str(module), 1))
+                        logging.info(indent("Reading : " + anim_file, 1))
 
-                        with open(animFile, 'r') as f:
+                        with open(anim_file, 'r') as f:
                             anim = None
                             for line in f:
-                                animType, animOptions, animId, animFile, animObj = Animation.parseLine(line)
+                                anim_type, anim_options, anim_id, anim_file, anim_obj = Animation.parse_line(line)
 
-                                logging.debug("        animType : " + animType.name + " || Line : " + line.strip())
+                                logging.debug(indent("animType : " + anim_type.name + " || Line : " + line.strip(), 2))
 
-                                name = animId.replace(package, "").replace(module, "").replace("_","")
-                                if animType == Animation.TYPE.BASIC:
-                                    anim = Animation(animType, animOptions, animId, animFile, animObj)
-                                    animModule.addItem(anim)
+                                if anim_type == Animation.TYPE.BASIC:
+                                    anim = Animation(anim_type, anim_options, anim_id, anim_file, anim_obj)
+                                    anim_module.add_item(anim)
                                     counter += 1
-                                    logging.info("        Adding basic animation")
+                                    logging.info(indent("Adding basic animation || Line : " + line.strip(), 3))
 
-                                elif animType == Animation.TYPE.ANIM_OBJ:
-                                    anim = Animation(animType, animOptions, animId, animFile, animObj)
-                                    animModule.addItem(anim)
+                                elif anim_type == Animation.TYPE.ANIM_OBJ:
+                                    anim = Animation(anim_type, anim_options, anim_id, anim_file, anim_obj)
+                                    anim_module.add_item(anim)
                                     counter += 1
-                                    logging.info("        Adding anim obj animation")
+                                    logging.info(indent("Adding AnimObj animation || Line : " + line.strip(), 3))
 
-                                elif animType == Animation.TYPE.SEQUENCE:
-                                    anim = Animation(animType, animOptions, animId, animFile, animObj)
-                                    animModule.addItem(anim)
+                                elif anim_type == Animation.TYPE.SEQUENCE:
+                                    anim = Animation(anim_type, anim_options, anim_id, anim_file, anim_obj)
+                                    anim_module.add_item(anim)
                                     counter += 1
-                                    logging.info("        Adding sequence animation")
+                                    logging.info(indent("Adding sequence animation || Line : " + line.strip(), 3))
 
-                                elif animType == Animation.TYPE.ADDITIVE:
-                                    anim.addStage(animId, animFile, animObj)
+                                elif anim_type == Animation.TYPE.ADDITIVE:
+                                    anim.add_stage(anim_id, anim_file, anim_obj)
                                     counter += 1
-                                    logging.info("            Adding stage")
+                                    logging.info(indent("Adding stage || Line : " + line.strip(), 4))
 
-                        animModule.items.sort(key=lambda x: x.name, reverse=False)
+                        anim_module.items.sort(key=lambda x: x.name, reverse=False)
 
-                        if animModule.items:
-                            animPackage.addItem(animModule)
-                            if package != previousPackage:
-                                previousPackage = package
-                                packages.append(animPackage)
+                        if anim_module.items:
+                            anim_package.add_item(anim_module)
+                            if package != previous_package:
+                                previous_package = package
+                                packages.append(anim_package)
 
-        duplicate = self.treeAnimFiles.createFromPackages(packages)
+        duplicate = self.treeAnimFiles.create_from_packages(packages)
         QMessageBox.information(self, "Results", str(duplicate) + " duplicates found (Not added)")
         self.treeAnimFiles.cleanup()
         self.treeAnimFiles.itemClicked.connect(self.displayLCDAnimChecked)
-        self.lcdAnimsFound.display(counter)
         self.displayLCDAnimChecked()
-        self.groupBoxGenerate.setDisabled(False)
-        self.groupBoxAnim.setDisabled(False)
-        self.groupBoxScanning.setDisabled(False)
+        self.lcdAnimsFound.display(counter)
 
-    def generatePlugin(self):
+        self.toggle_window(True)
+
+    def slot_lcd_display_anim_checked(self):
+        self.lcdAnimsChecked.display(self.treeAnimFiles.animation_count())
+
+    def generate_plugin(self):
         logging.info("=============== GENERATING PLUGIN ===============")
 
-        pluginPath = self.config.get("PATHS", "ModFolder") + "/" + self.config.get("PLUGIN", "Name") + "/" + self.config.get("PATHS", "Plugin")
-        pluginInstallPath = self.config.get("PATHS", "ModFolder") + "/" + self.config.get("PLUGIN", "Name") + "/" + self.config.get("PATHS", "installPlugin")
+        path_plugin_folder = get_config().get("PATHS", "ModFolder") + "/" + \
+                             get_config().get("PLUGIN", "Name") + "/" + \
+                             get_config().get("PATHS", "Plugin")
 
-        self.create_dir(pluginPath)
-        self.create_dir(pluginInstallPath)
+        path_plugin_install = get_config().get("PATHS", "ModFolder") + "/" + \
+                              get_config().get("PLUGIN", "Name") + "/" + \
+                              get_config().get("PATHS", "installPlugin")
 
-        logging.info("Plugin destination : " + pluginPath)
+        create_dir(path_plugin_folder)
+        create_dir(path_plugin_install)
+
+        logging.info("Plugin destination : " + path_plugin_folder)
 
         # File allowing the plugin to be recognized by OSA
-        open(pluginInstallPath + "/" + self.config.get("PLUGIN", "osplug") + ".osplug", "w")
+        open(path_plugin_install + "/" + self.config.get("PLUGIN", "osplug") + ".osplug", "w")
 
-        XMLRoot = self.treeAnimFiles.toXML(self.config)
+        xml_root = self.treeAnimFiles.to_xml(self.config)
 
-        with open(pluginPath + self.config.get("PLUGIN", "osplug") + ".myo", "w") as file:
-            data = ET.tostring(XMLRoot, "unicode")
+        with open(path_plugin_folder + self.config.get("PLUGIN", "osplug") + ".myo", "w") as file:
+            data = ET.tostring(xml_root, "unicode")
             file.write(data)
 
-        QMessageBox.information(self, "Results", "Plugin Generation Done !\n ----- Plugin path -----\n" + pluginPath)
-
-    @staticmethod
-    def create_dir(path):
-        # Prevent execution if the library already exists
-        if os.path.exists(path):
-            logging.info("Path already exists : " + path)
-        else:
-            logging.info("Creating new directory: " + path)
-            os.makedirs(path)
+        QMessageBox.information(self, "Results",
+                                "Plugin Generation Done !\n"
+                                "----- Plugin path -----\n" +
+                                path_plugin_folder)
 
 
 if __name__ == '__main__':
+    logging.basicConfig(filemode="w",
+                        filename="logs.log",
+                        level=logging.getLevelName(get_config().get("LOG", "level")),
+                        format='%(asctime)s - [%(levelname)s] - %(name)s : %(message)s',
+                        datefmt='%m/%d/%Y %I:%M:%S %p')
+
+    if not get_config().get("LOG", "enabled"):
+        logger = logging.getLogger()
+        logger.disabled = True
+
+    logging.info(" =============== STARTING LOGGING ===============")
+
     app = QApplication(sys.argv)
-    window = OSelectorWindow(sys.argv)
+    window = OSelectorWindow()
     sys.exit(app.exec_())
