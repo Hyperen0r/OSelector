@@ -20,6 +20,7 @@ from PyQt5.QtWidgets import (QApplication, QMessageBox, QFileDialog, QHBoxLayout
 
 # TODO Remove comment from line containing an animation
 # TODO Handle maxStringLength (hard coded)
+# TODO Handle unique file
 
 
 class COLOR(Enum):

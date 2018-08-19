@@ -1,8 +1,9 @@
 # OSelector
 
-**OSelector** is a tool to generate a poser plugin for **OSA**. You can easily generate a plugin for any mod you have installed,
-allowing you to test every animation using **FNIS**. The plugin is an xml file which is read by **OSA** and by
-using the *MyAnimation* functionality, you can play animation from OSA UI :  
+**OSelector** is a tool to generate a poser plugin for **OSA**. You can easily generate
+a plugin for any mod you have installed, allowing you to test every animation using **FNIS**
+through **OSA UI**.
+The plugin is an xml file using the *MyAnimation* functionality.
 
 Description of MyAnimation from **OSA**:  
 
@@ -13,30 +14,77 @@ Description of MyAnimation from **OSA**:
 > where it simply plays single animations.  
 [Nexus Link](https://www.nexusmods.com/skyrim/mods/76744/?tab=description&topic_id=5756447)
 
-If you use OSA, you surely have seen the plugin made by Morra (Available on LL : Morra's Poser Pack)
+If you use OSA, you surely have seen the plugin made by Morra
+(Available on LL : Morra's Poser Pack). This tool does not replace it. Morra put time and effort
+to make a clean navigation menu, which this tool struggle to make. However, this tool should
+make the process more easy and quick.
+
+*NOTE: This does not take an esp slot. It is just one xml file read by OSA*
+
 
 ## How does it works ?
 
-* First step is to scan the folder of your choice (usually data/ or mods/). It will register every animation usign **FNIS**
+* First step is to scan the folder of your choice (usually data/ or mods/).
+It will register every animation using **FNIS**
 
-* During second step, a tree structure will be displayed. It represents the navigation menu you will see in game. You can
-make some edit(change name, modify the structure (limited functionalities for now)). To prevent the screen from being cluttered with
-**OSA UI**, each page are limited to 25 items. It means that the tool will organize the tree in such a way that no more than 25 items are displayed.
+* During second step, a tree structure will be displayed. It represents the navigation menu
+you will see in game. You can make some edit(change name, modify the structure
+(limited functionality for now)). To prevent the screen from being cluttered with entries
+, each page is limited to 25 items. It means that the tool will organize the tree
+in such a way that no more than 25 items are displayed. But if you edit it yourself, this
+rule is not applied (Meaning you can force a page to have more than 25 entries). 
 
 * The third and final step is the plugin generation, where you just have to click a button.
+
+If you use Mod Organizer, the plugin should be installed in your mods folder. You just have to
+activate it in Mod Organizer. 
+
+
+
+## For who is this tool ?
+
+Anyone who want to make an easy navigation menu for a mod containing animations.
+
+* Mod Users can just launch the tool to have a menu for every or some animations. Everyone 
+can share his file, if he did some edit (better names and structures, like Morra's Poser Pack).
+
+* Mod Author can add this file to their mod, so when a user has OSA and his mods, he can easily
+cycle through the animations. 
+
+## How many animations ?
+
+The tool should be able to handle a very large amount of animations. Each mod have usually one
+**FNIS** file, containing information about animations. Some have more than one **FNIS** file.
+However if one file contains more than 8 750 animations (It's a lot, the most I have seen
+is ~2750 from Halo's mod), I cannot guaranteed anything.
+I've tested with roughly 14 000 animations and everything seemed fine.
 
 
 
 ## Animation supported
-  Animations can be applied only to the player. For animations with multiple actors, no npc will join,
-  only the animation for the specified actor will be played.
+  Normally all animations using FNIS should work out of the box. (The xml file is just
+  exposing animation id to OSA engine)
+  
+  I could test only the following :
   
 * Basic animation (Pose)
 * Sequence animation (Animation with multiple stages) 
 * AnimObj animation (Animation with objects)
 
 
+
 ## Configurations
 
 Some settings (like the max number of items per page) can be changed by editing the conf.ini file. If you do not see one, launch the tool once.
-It will automaticaly generate a new one.
+It will automatically generate a new one.
+
+
+
+## FAQ
+
+
+
+## Known Bug
+
+ - [ ] Menu entry is duplicated. Sometimes after closing and reopening, all menu entries are
+ duplicated (even the one not generated with the tool)
