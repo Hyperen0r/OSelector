@@ -16,7 +16,7 @@ Description of MyAnimation from **OSA**:
 
 If you use OSA, you surely have seen the plugin made by Morra
 (Available on LL : Morra's Poser Pack). This tool does not replace it. Morra put time and effort
-to make a clean navigation menu, which this tool struggle to make. However, this tool should
+to make a clean navigation menu, which this tool struggle to make out of the box. However, this tool should
 make the process more easy and quick.
 
 *NOTE: This does not take an esp slot. It is just one xml file read by OSA*
