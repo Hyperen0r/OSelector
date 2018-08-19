@@ -38,13 +38,13 @@ class OSelectorWindow(MainWindow):
         # ----- FIRST ROW : Scanning for animations files -----
         self.groupBoxScanning = create_group_box("STEP I - Scan")
         self.buttonScan = create_button(self, "Scan for animations", self.scan_folder)
-        labelAnimsFound = create_label("Animations found : ")
+        label_anims_found = create_label("Animations found : ")
         self.lcdAnimsFound = create_lcd(self)
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.buttonScan)
         hbox.addStretch(1)
-        hbox.addWidget(labelAnimsFound)
+        hbox.addWidget(label_anims_found)
         hbox.addWidget(self.lcdAnimsFound)
 
         self.groupBoxScanning.setLayout(hbox)
@@ -70,13 +70,13 @@ class OSelectorWindow(MainWindow):
         # ----- THIRD ROW : Generate plugin -----
         self.groupBoxGenerate = create_group_box("STEP III - Generate")
         self.buttonGenerate = create_button(self, "Generate Plugin", self.generate_plugin)
-        labelAnimsChecked = create_label("Animations checked : ")
+        label_anims_checked = create_label("Animations checked : ")
         self.lcdAnimsChecked = create_lcd(self)
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.buttonGenerate)
         hbox.addStretch(1)
-        hbox.addWidget(labelAnimsChecked)
+        hbox.addWidget(label_anims_checked)
         hbox.addWidget(self.lcdAnimsChecked)
 
         self.groupBoxGenerate.setLayout(hbox)
@@ -89,44 +89,44 @@ class OSelectorWindow(MainWindow):
 
             if answer == QMessageBox.Yes:
                 QMessageBox.information(self, "Instructions for MO users",
-                                        "Next dialog window will ask you where your Mod Organiser mods/ folder is,"
-                                        "thus allowing to install the plugin directly."
-                                        "You will still need to activate it in Mod Organizer left pane."
-                                        "If you don't see the mod, refresh the left pane.")
-                get_config().set("CONFIG", "bUseMo", "True")
+                                        "Next dialog window will ask you where your Mod Organiser mods/ folder is, "
+                                        "thus allowing to install the plugin directly. "
+                                        "You will still need to activate it in Mod Organizer left pane. "
+                                        "If you don't see the mod, refresh the left pane. ")
+                get_config().set("CONFIG", "bUseModOrganizer", "True")
             else:
                 QMessageBox.information(self, "Instructions for Non-MO users",
-                                        "Next dialog window will ask you to specify a folder to store the plugin."
-                                        "In order to install it with a mod manager, compress the generated folder"
-                                        "(Unless you specified skyrim/data folder")
-                get_config().set("CONFIG", "bUseMo", "False")
+                                        "Next dialog window will ask you to specify a folder to store the plugin. "
+                                        "In order to install it with a mod manager, compress the generated folder "
+                                        "(Unless you specified skyrim/data folder ")
+                get_config().set("CONFIG", "bUseModOrganizer", "False")
 
             folder = QFileDialog.getExistingDirectory(self, 'Mod folder location', '', QFileDialog.ShowDirsOnly)
 
             if folder:
-                get_config().set("PATHS", "ModFolder", str(folder))
+                get_config().set("PATHS", "installFolder", str(folder))
 
             get_config().set("CONFIG", "bFirstTime", "False")
             save_config()
 
     def toggle_window(self, state):
-        self.groupBoxGenerate.setDisabled(state)
-        self.groupBoxAnim.setDisabled(state)
-        self.groupBoxScanning.setDisabled(state)
+        self.groupBoxGenerate.setDisabled(not state)
+        self.groupBoxAnim.setDisabled(not state)
+        self.groupBoxScanning.setDisabled(not state)
 
     def scan_folder(self):
 
         self.toggle_window(False)
 
         scan_dir = QFileDialog.getExistingDirectory(self, 'Mod folder location',
-                                                    get_config().get("PATHS", "ModFolder"),
+                                                    get_config().get("PATHS", "installFolder"),
                                                     QFileDialog.ShowDirsOnly)
 
         packages = []
         previous_package = ""
         anim_package = None
         counter = 0
-        max_item_string_length = get_config().get("PLUGIN", "maxItemStringLength")
+        max_item_string_length = get_config().getint("PLUGIN", "maxItemStringLength")
 
         if scan_dir:
 
@@ -136,9 +136,10 @@ class OSelectorWindow(MainWindow):
             for root, dirs, files in os.walk(scan_dir):
                 for file in files:
                     if file.startswith("FNIS") and file.endswith("List.txt"):
-                        anim_file = os.path.join(root, file).replace(scan_dir + '\\', '')
-                        package = anim_file.split('\\', 1)[0][slice(0, max_item_string_length)]
-                        module = anim_file.rsplit('\\', 1)[1][5:-9][slice(-max_item_string_length, None)]
+                        anim_file = os.path.join(root, file)
+                        local_path = anim_file.replace(scan_dir + '\\', '')
+                        package = local_path.split('\\', 1)[0][slice(0, max_item_string_length)]
+                        module = local_path.rsplit('\\', 1)[1][5:-9][slice(-max_item_string_length, None)]
 
                         if package != previous_package:
                             if anim_package:
@@ -158,19 +159,19 @@ class OSelectorWindow(MainWindow):
                                 logging.debug(indent("animType : " + anim_type.name + " || Line : " + line.strip(), 2))
 
                                 if anim_type == Animation.TYPE.BASIC:
-                                    anim = Animation(anim_type, anim_options, anim_id, anim_file, anim_obj)
+                                    anim = Animation(anim_package.name, anim_module.name, anim_type, anim_options, anim_id, anim_file, anim_obj)
                                     anim_module.add_item(anim)
                                     counter += 1
                                     logging.info(indent("Adding basic animation || Line : " + line.strip(), 3))
 
                                 elif anim_type == Animation.TYPE.ANIM_OBJ:
-                                    anim = Animation(anim_type, anim_options, anim_id, anim_file, anim_obj)
+                                    anim = Animation(anim_package.name, anim_module.name, anim_type, anim_options, anim_id, anim_file, anim_obj)
                                     anim_module.add_item(anim)
                                     counter += 1
                                     logging.info(indent("Adding AnimObj animation || Line : " + line.strip(), 3))
 
                                 elif anim_type == Animation.TYPE.SEQUENCE:
-                                    anim = Animation(anim_type, anim_options, anim_id, anim_file, anim_obj)
+                                    anim = Animation(anim_package.name, anim_module.name, anim_type, anim_options, anim_id, anim_file, anim_obj)
                                     anim_module.add_item(anim)
                                     counter += 1
                                     logging.info(indent("Adding sequence animation || Line : " + line.strip(), 3))
@@ -180,7 +181,7 @@ class OSelectorWindow(MainWindow):
                                     counter += 1
                                     logging.info(indent("Adding stage || Line : " + line.strip(), 4))
 
-                        anim_module.items.sort(key=lambda x: x.name, reverse=False)
+                        anim_module.items.sort(key=lambda x: x.parse_name(), reverse=False)
 
                         if anim_module.items:
                             anim_package.add_item(anim_module)
@@ -188,11 +189,12 @@ class OSelectorWindow(MainWindow):
                                 previous_package = package
                                 packages.append(anim_package)
 
+        packages.sort(key=lambda x: x.name, reverse=False)
         duplicate = self.treeAnimFiles.create_from_packages(packages)
         QMessageBox.information(self, "Results", str(duplicate) + " duplicates found (Not added)")
         self.treeAnimFiles.cleanup()
-        self.treeAnimFiles.itemClicked.connect(self.displayLCDAnimChecked)
-        self.displayLCDAnimChecked()
+        self.treeAnimFiles.itemClicked.connect(self.slot_lcd_display_anim_checked)
+        self.slot_lcd_display_anim_checked()
         self.lcdAnimsFound.display(counter)
 
         self.toggle_window(True)
@@ -203,13 +205,13 @@ class OSelectorWindow(MainWindow):
     def generate_plugin(self):
         logging.info("=============== GENERATING PLUGIN ===============")
 
-        path_plugin_folder = get_config().get("PATHS", "ModFolder") + "/" + \
+        path_plugin_folder = get_config().get("PATHS", "installFolder") + "/" + \
                              get_config().get("PLUGIN", "Name") + "/" + \
-                             get_config().get("PATHS", "Plugin")
+                             get_config().get("PATHS", "pluginFolder")
 
-        path_plugin_install = get_config().get("PATHS", "ModFolder") + "/" + \
+        path_plugin_install = get_config().get("PATHS", "installFolder") + "/" + \
                               get_config().get("PLUGIN", "Name") + "/" + \
-                              get_config().get("PATHS", "installPlugin")
+                              get_config().get("PATHS", "pluginInstall")
 
         create_dir(path_plugin_folder)
         create_dir(path_plugin_install)
@@ -217,11 +219,12 @@ class OSelectorWindow(MainWindow):
         logging.info("Plugin destination : " + path_plugin_folder)
 
         # File allowing the plugin to be recognized by OSA
-        open(path_plugin_install + "/" + self.config.get("PLUGIN", "osplug") + ".osplug", "w")
+        file = open(path_plugin_install + "/" + get_config().get("PLUGIN", "osplug") + ".osplug", "w")
+        file.close()
 
-        xml_root = self.treeAnimFiles.to_xml(self.config)
+        xml_root = self.treeAnimFiles.to_xml()
 
-        with open(path_plugin_folder + self.config.get("PLUGIN", "osplug") + ".myo", "w") as file:
+        with open(path_plugin_folder + get_config().get("PLUGIN", "osplug") + ".myo", "w") as file:
             data = ET.tostring(xml_root, "unicode")
             file.write(data)
 

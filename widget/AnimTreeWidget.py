@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 import widget.AnimTreeItem
 
 from enum import Enum
+from util.Config import get_config
 from widget.QuickyGui import *
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QHeaderView, QMenu, QTreeWidget
@@ -74,14 +75,9 @@ class AnimTreeWidget(QTreeWidget):
                 self.action_move_up(item)
             return True
 
-        # TODO Test if correct
         n1 = item.parent()
         if not n1:
-            n1 = self.invisibleRootItem()
-            for i in range(item.childCount()):
-                self.action_move_up(item.child(0))
-            self.action_remove_from_parent(item)
-            return True
+            return False
 
         n2 = n1.parent()
         if not n2:
@@ -173,11 +169,11 @@ class AnimTreeWidget(QTreeWidget):
                 anim_section = None
                 counter = 1
                 for animation in module.items:
-                    if animation.name != previous_animation or not anim_section:
-                        previous_animation = animation.name
+                    if animation.parse_name() != previous_animation or not anim_section:
+                        previous_animation = animation.parse_name()
                         counter = 1
                         anim_section = widget.AnimTreeItem.AnimTreeItem()
-                        anim_section.setText(0, animation.name)
+                        anim_section.setText(0, animation.parse_name())
                         module_section.add_nested_child(anim_section)
 
                     for i, stage in enumerate(animation.stages):
@@ -214,14 +210,14 @@ class AnimTreeWidget(QTreeWidget):
             menu.exec_(QCursor.pos())
         return
 
-    def to_xml(self, config):
+    def to_xml(self):
         root = self.invisibleRootItem()
         folder0 = ET.Element("folder0")
-        folder0.set("n", config.get("PLUGIN", "name"))
-        folder0.set("i", config.get("PLUGIN", "defaultPackageIcon"))
+        folder0.set("n", get_config().get("PLUGIN", "name"))
+        folder0.set("i", get_config().get("PLUGIN", "defaultPackageIcon"))
 
         for i in range(root.childCount()):
             child = root.child(i)
             if child.checkState(0) != Qt.Unchecked:
-                child.to_xml(folder0, 1, config)
+                child.to_xml(folder0, 1)
         return folder0

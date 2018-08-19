@@ -1,4 +1,5 @@
 import re
+from util.Config import get_config
 from enum import Enum
 
 
@@ -49,9 +50,12 @@ class Animation:
         self.stages_file.append(animFile)
         self.stages_obj.append(animObj)
 
-    def parse_name(self, index):
-        # TODO Improve naming for animation
-        return self.stages[index]
+    def parse_name(self):
+        return self.stages[0].rsplit("_", 2)[0][slice(0, get_config().getint("PLUGIN", "maxItemStringLength"))]
+
+    def parse_stage_name(self, index=0):
+        # TODO Improve naming for stages
+        return self.stages[index][slice(-get_config().getint("PLUGIN", "maxItemStringLength"), None)]
 
     @staticmethod
     def parse_line(line):

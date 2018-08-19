@@ -2,6 +2,7 @@ import math
 import widget.AnimTreeWidget
 import xml.etree.ElementTree as ET
 
+from util.Config import get_config
 from PyQt5.QtGui import QBrush
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QTreeWidgetItem
@@ -65,20 +66,23 @@ class AnimTreeItem(QTreeWidgetItem):
         else:
             return 1
 
-    def to_xml(self, parent, level, config):
+    def to_xml(self, parent, level):
         if self.bIsSplitter or not self.is_anim():
             elt = ET.SubElement(parent, "folder" + str(level))
             elt.set("n", self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value))
-            elt.set("i", config.get("PLUGIN", "defaultFolderIcon"))
+            if self.bIsSplitter:
+                elt.set("i", get_config().get("PLUGIN", "defaultSetIcon"))
+            else:
+                elt.set("i", get_config().get("PLUGIN", "defaultFolderIcon"))
 
             for i in range(self.childCount()):
                 child = self.child(i)
                 if child.checkState(0) != Qt.Unchecked:
-                    child.to_xml(elt, level + 1, config)
+                    child.to_xml(elt, level + 1)
         else:
             entry = ET.SubElement(parent, "entry")
             entry.set("n", self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value))
-            entry.set("i", config.get("PLUGIN", "defaultAnimationIcon"))
+            entry.set("i", get_config().get("PLUGIN", "defaultAnimationIcon"))
             entry.set("id", self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ID.value))
 
     def flags(self):
@@ -118,7 +122,7 @@ class AnimTreeItem(QTreeWidgetItem):
         self.setForeground(0, brush)
 
     def set_animation(self, animation, i):
-        self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value, animation.stages[i][-25:])
+        self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value, animation.parse_stage_name(i))
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.TYPE.value, animation.type.name)
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.OPTIONS.value, str([x.name for x in animation.options]))
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ID.value, str(animation.stages[i]))

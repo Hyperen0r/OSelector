@@ -27,8 +27,8 @@ def create_config():
 
     config.add_section("PATHS")
     config.set("PATHS", "installFolder", "")
-    config.set("PATHS", "pluginFolderPath", "meshes/0SA/_MyOSA/anim_1/")
-    config.set("PATHS", "pluginInstallPath", "meshes/0SA/mod/__install/plugin/")
+    config.set("PATHS", "pluginFolder", "meshes/0SA/_MyOSA/anim_1/")
+    config.set("PATHS", "pluginInstall", "meshes/0SA/mod/__install/plugin/")
 
     config.add_section("LOG")
     config.set("LOG", "enabled", "True")
