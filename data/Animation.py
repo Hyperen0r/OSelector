@@ -51,11 +51,11 @@ class Animation:
         self.stages_obj.append(animObj)
 
     def parse_name(self):
-        return self.stages[0].rsplit("_", 2)[0][slice(0, get_config().getint("PLUGIN", "maxItemStringLength"))]
+        return self.stages[0].rsplit("_", 2)[0]
 
     def parse_stage_name(self, index=0):
         # TODO Improve naming for stages
-        return self.stages[index][slice(-get_config().getint("PLUGIN", "maxItemStringLength"), None)]
+        return self.stages[index]
 
     @staticmethod
     def parse_line(line):

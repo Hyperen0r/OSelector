@@ -1,6 +1,9 @@
 import xml.etree.ElementTree as ET
 import widget.AnimTreeItem
 
+import logging
+log = logging.getLogger(__name__)
+
 from enum import Enum
 from util.Config import get_config
 from widget.QuickyGui import *
@@ -41,11 +44,14 @@ class AnimTreeWidget(QTreeWidget):
         self.setColumnWidth(AnimTreeWidget.COLUMN.TYPE.value, 100)
         self.setColumnWidth(AnimTreeWidget.COLUMN.ID.value, 200)
 
+        self.setDragEnabled(True)
+        self.setDragDropMode(self.InternalMove)
+        self.setDropIndicatorShown(True)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.open_menu)
         self.setAlternatingRowColors(True)
         self.setEditTriggers(QTreeWidget.DoubleClicked | QTreeWidget.EditKeyPressed)
-        self.setSelectionMode(QTreeWidget.ContiguousSelection)
+        self.setSelectionMode(self.ExtendedSelection)
 
     def action_insert_parent(self, item=None, parent=None):
         if not parent:
@@ -148,6 +154,28 @@ class AnimTreeWidget(QTreeWidget):
                 self.cleanup(child)
         return has_been_removed
 
+    def create_from_xml(self, xml_file):
+        self.clear()
+
+        xml = ET.parse(xml_file)
+        root = self.invisibleRootItem()
+        counter = self.add_item_from_xml(root, xml.getroot())
+
+        return counter
+
+    def add_item_from_xml(self, parent, elt):
+        counter = 0
+        for child in elt:
+            item = widget.AnimTreeItem.AnimTreeItem()
+            item.setText(self.COLUMN.NAME.value, child.get("n"))
+            if child.get("id"):
+                counter += 1
+                item.setText(self.COLUMN.ID.value, child.get("id"))
+            parent.addChild(item)
+            log.info(child)
+            counter += self.add_item_from_xml(item, child)
+        return counter
+
     def create_from_packages(self, packages):
 
         self.clear()
@@ -173,12 +201,13 @@ class AnimTreeWidget(QTreeWidget):
                         previous_animation = animation.parse_name()
                         counter = 1
                         anim_section = widget.AnimTreeItem.AnimTreeItem()
-                        anim_section.setText(0, animation.parse_name())
+                        anim_section.setText(0, animation.parse_name()[slice(0, get_config().getint("PLUGIN", "maxItemStringLength"))])
                         module_section.add_nested_child(anim_section)
 
                     for i, stage in enumerate(animation.stages):
                         if animation.stages[i] in animations:
                             duplicate_counter += 1
+                            log.warning("Duplicate found : " + animation.stages[i] + " in " + package.name + " | " + module.name)
                         else:
                             stage_section = widget.AnimTreeItem.AnimTreeItem()
                             stage_section.set_animation(animation, i)

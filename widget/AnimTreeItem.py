@@ -122,7 +122,7 @@ class AnimTreeItem(QTreeWidgetItem):
         self.setForeground(0, brush)
 
     def set_animation(self, animation, i):
-        self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value, animation.parse_stage_name(i))
+        self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value, animation.parse_stage_name(i)[slice(-get_config().getint("PLUGIN", "maxItemStringLength"), None)])
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.TYPE.value, animation.type.name)
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.OPTIONS.value, str([x.name for x in animation.options]))
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ID.value, str(animation.stages[i]))

@@ -39,11 +39,13 @@ class OSelectorWindow(MainWindow):
         # ----- FIRST ROW : Scanning for animations files -----
         self.groupBoxScanning = create_group_box("STEP I - Scan")
         self.buttonScan = create_button(self, "Scan for animations", self.scan_folder)
+        self.buttonLoad = create_button(self, "Load plugin", self.load_xml)
         label_anims_found = create_label("Animations found : ")
         self.lcdAnimsFound = create_lcd(self)
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.buttonScan)
+        hbox.addWidget(self.buttonLoad)
         hbox.addStretch(1)
         hbox.addWidget(label_anims_found)
         hbox.addWidget(self.lcdAnimsFound)
@@ -115,6 +117,28 @@ class OSelectorWindow(MainWindow):
         self.groupBoxAnim.setDisabled(not state)
         self.groupBoxScanning.setDisabled(not state)
 
+    def load_xml(self):
+        self.toggle_window(False)
+
+        xml_file, filter = QFileDialog.getOpenFileName(self, "Open file",
+                                               get_config().get("PATHS", "installFolder") + "/" +
+                                               get_config().get("PLUGIN", "name") + "/" +
+                                               get_config().get("PATHS", "pluginFolder"),
+                                               "MyOsa file (*.myo)")
+
+        found = 0
+        if xml_file:
+            logging.info("xml_file given : " + xml_file)
+            logging.info("Loading")
+
+            found = self.treeAnimFiles.create_from_xml(xml_file)
+
+        self.treeAnimFiles.itemClicked.connect(self.slot_lcd_display_anim_checked)
+        self.slot_lcd_display_anim_checked()
+        self.lcdAnimsFound.display(found)
+
+        self.toggle_window(True)
+
     def scan_folder(self):
 
         self.toggle_window(False)
@@ -138,9 +162,10 @@ class OSelectorWindow(MainWindow):
                 for file in files:
                     if file.startswith("FNIS") and file.endswith("List.txt"):
                         anim_file = os.path.join(root, file)
-                        local_path = anim_file.replace(scan_dir + '\\', '')
-                        package = local_path.split('\\', 1)[0][slice(0, max_item_string_length)]
-                        module = local_path.rsplit('\\', 1)[1][5:-9][slice(-max_item_string_length, None)]
+                        module = file[5:-9]
+                        package = anim_file.replace(scan_dir + '\\', '').split('\\', 1)[0][slice(0, max_item_string_length)]
+                        if not package:
+                            package = module
 
                         if package != previous_package:
                             if anim_package:
@@ -163,26 +188,26 @@ class OSelectorWindow(MainWindow):
                                     anim = Animation(anim_package.name, anim_module.name, anim_type, anim_options, anim_id, anim_file, anim_obj)
                                     anim_module.add_item(anim)
                                     counter += 1
-                                    logging.info(indent("Adding basic animation || Line : " + line.strip(), 3))
+                                    logging.info(indent("Adding basic animation || Line : " + line.strip(), 2))
 
                                 elif anim_type == Animation.TYPE.ANIM_OBJ:
                                     anim = Animation(anim_package.name, anim_module.name, anim_type, anim_options, anim_id, anim_file, anim_obj)
                                     anim_module.add_item(anim)
                                     counter += 1
-                                    logging.info(indent("Adding AnimObj animation || Line : " + line.strip(), 3))
+                                    logging.info(indent("Adding AnimObj animation || Line : " + line.strip(), 2))
 
                                 elif anim_type == Animation.TYPE.SEQUENCE:
                                     anim = Animation(anim_package.name, anim_module.name, anim_type, anim_options, anim_id, anim_file, anim_obj)
                                     anim_module.add_item(anim)
                                     counter += 1
-                                    logging.info(indent("Adding sequence animation || Line : " + line.strip(), 3))
+                                    logging.info(indent("Adding sequence animation || Line : " + line.strip(), 2))
 
                                 elif anim_type == Animation.TYPE.ADDITIVE:
                                     anim.add_stage(anim_id, anim_file, anim_obj)
                                     counter += 1
-                                    logging.info(indent("Adding stage || Line : " + line.strip(), 4))
+                                    logging.info(indent("Adding stage || Line : " + line.strip(), 3))
 
-                        anim_module.items.sort(key=lambda x: x.parse_name(), reverse=False)
+                        #anim_module.items.sort(key=lambda x: x.parse_name(), reverse=False)
 
                         if anim_module.items:
                             anim_package.add_item(anim_module)
@@ -190,13 +215,14 @@ class OSelectorWindow(MainWindow):
                                 previous_package = package
                                 packages.append(anim_package)
 
-        packages.sort(key=lambda x: x.name, reverse=False)
-        duplicate = self.treeAnimFiles.create_from_packages(packages)
-        QMessageBox.information(self, "Results", str(duplicate) + " duplicates found (Not added)")
-        self.treeAnimFiles.cleanup()
-        self.treeAnimFiles.itemClicked.connect(self.slot_lcd_display_anim_checked)
-        self.slot_lcd_display_anim_checked()
-        self.lcdAnimsFound.display(counter)
+            packages.sort(key=lambda x: x.name, reverse=False)
+            duplicate = self.treeAnimFiles.create_from_packages(packages)
+            QMessageBox.information(self, "Results", str(duplicate) + " duplicates found (Not added)\n"
+                                                                  "List (WARNING Level) available in logs (if activated)")
+            self.treeAnimFiles.cleanup()
+            self.treeAnimFiles.itemClicked.connect(self.slot_lcd_display_anim_checked)
+            self.slot_lcd_display_anim_checked()
+            self.lcdAnimsFound.display(counter)
 
         self.toggle_window(True)
 
