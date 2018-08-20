@@ -21,6 +21,7 @@ make the process more easy and quick.
 
 *NOTE: This does not take an esp slot. It is just one xml file read by OSA*
 
+![Tool Overview](ressources/tool_overview.png)
 
 ## How does it works ?
 
