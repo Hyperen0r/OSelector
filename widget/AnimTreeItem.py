@@ -13,6 +13,7 @@ class AnimTreeItem(QTreeWidgetItem):
     def __init__(self, *__args):
         super().__init__(*__args)
         self.setFlags(self.flags())
+        self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ICON.value, get_config().get("PLUGIN", "defaultFolderIcon"))
         self.setCheckState(0, Qt.Checked)
         self.splitterCounter = 0
         self.splitterIndex = 0
@@ -71,9 +72,9 @@ class AnimTreeItem(QTreeWidgetItem):
             elt = ET.SubElement(parent, "folder" + str(level))
             elt.set("n", self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value))
             if self.bIsSplitter:
-                elt.set("i", get_config().get("PLUGIN", "defaultSetIcon"))
+                elt.set("i", self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ICON.value) or get_config().get("PLUGIN", "defaultSetIcon"))
             else:
-                elt.set("i", get_config().get("PLUGIN", "defaultFolderIcon"))
+                elt.set("i", self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ICON.value) or get_config().get("PLUGIN", "defaultFolderIcon"))
 
             for i in range(self.childCount()):
                 child = self.child(i)
@@ -82,7 +83,7 @@ class AnimTreeItem(QTreeWidgetItem):
         else:
             entry = ET.SubElement(parent, "entry")
             entry.set("n", self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value))
-            entry.set("i", get_config().get("PLUGIN", "defaultAnimationIcon"))
+            entry.set("i", self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ICON.value) or get_config().get("PLUGIN", "defaultAnimationIcon"))
             entry.set("id", self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ID.value))
 
     def flags(self):
@@ -106,6 +107,7 @@ class AnimTreeItem(QTreeWidgetItem):
             index = self.next_splitter_index()
         splitter = AnimTreeItem()
         splitter.setText(0, "Set " + str(index+1))
+        splitter.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ICON.value, get_config().get("PLUGIN", "defaultSetIcon"))
         splitter.bIsSplitter = True
         self.insertChild(index, splitter)
         self.splitterCounter += 1
@@ -123,6 +125,7 @@ class AnimTreeItem(QTreeWidgetItem):
 
     def set_animation(self, animation, i):
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value, animation.parse_stage_name(i)[slice(-get_config().getint("PLUGIN", "maxItemStringLength"), None)])
+        self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ICON.value, get_config().get("PLUGIN", "defaultAnimationIcon"))
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.TYPE.value, animation.type.name)
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.OPTIONS.value, str([x.name for x in animation.options]))
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ID.value, str(animation.stages[i]))

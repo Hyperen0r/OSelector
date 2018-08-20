@@ -21,28 +21,37 @@ class AnimTreeWidget(QTreeWidget):
 
     class COLUMN(Enum):
         NAME = 0
-        TYPE = 1
-        OPTIONS = 2
-        ID = 3
-        FILE = 4
-        ANIM_OBJ = 5
+        ICON = 1
+        TYPE = 2
+        OPTIONS = 3
+        ID = 4
+        FILE = 5
+        ANIM_OBJ = 6
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
         self.header().setDefaultAlignment(Qt.AlignHCenter)
-        self.header().setMinimumSectionSize(85)
+        self.header().setMinimumSectionSize(200)
         self.header().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.header().setFont(get_normal_font())
         self.setHeaderLabels([AnimTreeWidget.COLUMN.NAME.name,
+                              AnimTreeWidget.COLUMN.ICON.name,
                               AnimTreeWidget.COLUMN.TYPE.name,
                               AnimTreeWidget.COLUMN.OPTIONS.name,
                               AnimTreeWidget.COLUMN.ID.name,
                               AnimTreeWidget.COLUMN.FILE.name,
                               AnimTreeWidget.COLUMN.ANIM_OBJ.name])
+
         self.setColumnWidth(AnimTreeWidget.COLUMN.NAME.value, 400)
+        self.setColumnWidth(AnimTreeWidget.COLUMN.ICON.value, 400)
         self.setColumnWidth(AnimTreeWidget.COLUMN.TYPE.value, 100)
         self.setColumnWidth(AnimTreeWidget.COLUMN.ID.value, 200)
+
+        self.hideColumn(self.COLUMN.TYPE.value)
+        self.hideColumn(self.COLUMN.OPTIONS.value)
+        self.hideColumn(self.COLUMN.FILE.value)
+        self.hideColumn(self.COLUMN.ANIM_OBJ.value)
 
         self.setDragEnabled(True)
         self.setDragDropMode(self.InternalMove)
@@ -168,6 +177,7 @@ class AnimTreeWidget(QTreeWidget):
         for child in elt:
             item = widget.AnimTreeItem.AnimTreeItem()
             item.setText(self.COLUMN.NAME.value, child.get("n"))
+            item.setText(self.COLUMN.ICON.value, child.get("i") or get_config().get("PLUGIN", "defaultFolderIcon"))
             if child.get("id"):
                 counter += 1
                 item.setText(self.COLUMN.ID.value, child.get("id"))
@@ -239,10 +249,10 @@ class AnimTreeWidget(QTreeWidget):
             menu.exec_(QCursor.pos())
         return
 
-    def to_xml(self):
+    def to_xml(self, plugin_name):
         root = self.invisibleRootItem()
         folder0 = ET.Element("folder0")
-        folder0.set("n", get_config().get("PLUGIN", "name"))
+        folder0.set("n", plugin_name)
         folder0.set("i", get_config().get("PLUGIN", "defaultPackageIcon"))
 
         for i in range(root.childCount()):

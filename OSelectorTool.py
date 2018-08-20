@@ -15,12 +15,12 @@ from widget.QuickyGui import *
 from widget.MainWindow import MainWindow
 from widget.AnimTreeWidget import AnimTreeWidget
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QApplication, QMessageBox, QFileDialog, QHBoxLayout, QVBoxLayout)
+from PyQt5.QtWidgets import (QApplication, QMessageBox, QFileDialog, QInputDialog, QHBoxLayout, QVBoxLayout)
 
 
 # TODO Remove comment from line containing an animation
-# TODO Handle maxStringLength (hard coded)
 # TODO Handle unique file
+# TODO Handle merge plugin ?
 
 
 class COLOR(Enum):
@@ -232,33 +232,42 @@ class OSelectorWindow(MainWindow):
     def generate_plugin(self):
         logging.info("=============== GENERATING PLUGIN ===============")
 
-        path_plugin_folder = get_config().get("PATHS", "installFolder") + "/" + \
-                             get_config().get("PLUGIN", "Name") + "/" + \
-                             get_config().get("PATHS", "pluginFolder")
+        plugin_name, ok = QInputDialog.getText(self, "Plugin Name", "Enter the plugin name", text=get_config().get("PLUGIN", "name"))
 
-        path_plugin_install = get_config().get("PATHS", "installFolder") + "/" + \
-                              get_config().get("PLUGIN", "Name") + "/" + \
-                              get_config().get("PATHS", "pluginInstall")
+        if ok:
+            if plugin_name:
 
-        create_dir(path_plugin_folder)
-        create_dir(path_plugin_install)
+                path_plugin_folder = get_config().get("PATHS", "installFolder") + "/" + \
+                                     plugin_name + "/" + \
+                                     get_config().get("PATHS", "pluginFolder")
 
-        logging.info("Plugin destination : " + path_plugin_folder)
+                """
+                path_plugin_install = get_config().get("PATHS", "installFolder") + "/" + \
+                                      plugin_name + "/" + \
+                                      get_config().get("PATHS", "pluginInstall")
+                create_dir(path_plugin_install)
+                
+                # File allowing the plugin to be recognized by OSA
+                file = open(path_plugin_install + "/" + get_config().get("PLUGIN", "osplug") + ".osplug", "w")
+                file.close()
+                """
 
-        # File allowing the plugin to be recognized by OSA
-        file = open(path_plugin_install + "/" + get_config().get("PLUGIN", "osplug") + ".osplug", "w")
-        file.close()
+                create_dir(path_plugin_folder)
 
-        xml_root = self.treeAnimFiles.to_xml()
+                logging.info("Plugin destination : " + path_plugin_folder)
 
-        with open(path_plugin_folder + get_config().get("PLUGIN", "osplug") + ".myo", "w") as file:
-            data = ET.tostring(xml_root, "unicode")
-            file.write(data)
+                xml_root = self.treeAnimFiles.to_xml(plugin_name)
 
-        QMessageBox.information(self, "Results",
-                                "Plugin Generation Done !\n"
-                                "----- Plugin path -----\n" +
-                                path_plugin_folder)
+                with open(path_plugin_folder + plugin_name + ".myo", "w") as file:
+                    data = ET.tostring(xml_root, "unicode")
+                    file.write(data)
+
+                QMessageBox.information(self, "Results",
+                                        "Plugin Generation Done !\n"
+                                        "----- Plugin path -----\n" +
+                                        path_plugin_folder)
+            else:
+                QMessageBox.warning(self, "Abort", "Enter valid name")
 
 
 if __name__ == '__main__':
