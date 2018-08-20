@@ -28,15 +28,14 @@ make the process more easy and quick.
 It will register every animation using **FNIS**
 
 * During second step, a tree structure will be displayed. It represents the navigation menu
-you will see in game. You can make some edit(change name, modify the structure
-(limited functionality for now)). To prevent the screen from being cluttered with entries
-, each page is limited to 25 items. It means that the tool will organize the tree
-in such a way that no more than 25 items are displayed. But if you edit it yourself, this
-rule is not applied (Meaning you can force a page to have more than 25 entries). 
+you will see in game. You can make some edit, changing name and modifying the organization (limited functionality for now).
+To prevent the screen from being cluttered with entries, each page is limited to 25 items at generation.
+It means that the tool will organize the treein such a way that no more than 25 items are displayed.
+But if you edit it yourself, this rule is not applied (Meaning you can force a page to have more than 25 entries). 
 
 * The third and final step is the plugin generation, where you just have to click a button.
 
-If you use Mod Organizer, the plugin should be installed in your mods folder. You just have to
+If you use Mod Organizer, the plugin should be installed in your mods folder. Then you just have to
 activate it in Mod Organizer. 
 
 
@@ -44,19 +43,21 @@ activate it in Mod Organizer.
 ## For who is this tool ?
 
 Anyone who want to make an easy navigation menu for a mod containing animations.
+Anyone who want to make to tweak a navigation menu with better names and organization.
 
 * Mod Users can just launch the tool to have a menu for every or some animations. Everyone 
-can share his file, if he did some edit (better names and structures, like Morra's Poser Pack).
+can share his file, if he did some edit (better names and organization, like Morra's Poser Pack).
 
 * Mod Author can add this file to their mod, so when a user has OSA and his mods, he can easily
-cycle through the animations. 
+cycle through his animations. 
 
 ## How many animations ?
 
 The tool should be able to handle a very large amount of animations. Each mod have usually one
 **FNIS** file, containing information about animations. Some have more than one **FNIS** file.
 However if one file contains more than 8 750 animations (It's a lot, the most I have seen
-is ~2750 from Halo's mod), I cannot guaranteed anything.
+is ~2 750 from Halo's mod), I cannot guarantee anything.
+
 I've tested with roughly 14 000 animations and everything seemed fine.
 
 
