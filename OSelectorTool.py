@@ -21,6 +21,7 @@ from PyQt5.QtWidgets import (QApplication, QMessageBox, QFileDialog, QInputDialo
 # TODO Remove comment from line containing an animation
 # TODO Handle unique file
 # TODO Handle merge plugin ?
+# TODO Add choose location install button (Handle packing with other mods)
 
 
 class COLOR(Enum):
