@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-from PyQt5.QtCore import QSize
-from PyQt5.QtWidgets import (QMainWindow, QDesktopWidget, QWidget, QVBoxLayout)
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtWidgets import (QMainWindow, QDesktopWidget, QWidget, QVBoxLayout, QStyle)
 
 
 class MainWindow(QMainWindow):
@@ -24,10 +24,7 @@ class MainWindow(QMainWindow):
         self.show()
 
     def center(self):
-        qr = self.frameGeometry()
-        cp = QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
+        self.setGeometry(QStyle.alignedRect(Qt.LeftToRight, Qt.AlignCenter, self.size(), QDesktopWidget().availableGeometry()))
 
     def init_ui(self):
         """ To implement in child """

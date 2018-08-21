@@ -15,7 +15,8 @@ from widget.QuickyGui import *
 from widget.MainWindow import MainWindow
 from widget.AnimTreeWidget import AnimTreeWidget
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QApplication, QMessageBox, QFileDialog, QInputDialog, QHBoxLayout, QVBoxLayout)
+from PyQt5.QtWidgets import (QApplication, QMessageBox, QFileDialog, QInputDialog,
+                             QHBoxLayout, QVBoxLayout, QStyleFactory)
 
 
 # TODO Remove comment from line containing an animation
@@ -34,28 +35,50 @@ class OSelectorWindow(MainWindow):
     def __init__(self):
         super().__init__("OSelector Tool")
 
+        if "Fusion" in [st for st in QStyleFactory.keys()]:
+            app.setStyle(QStyleFactory.create("Fusion"))
+        elif sys.platform == "win32":
+            app.setStyle(QStyleFactory.create("WindowsVista"))
+        elif sys.platform == "linux":
+            app.setStyle(QStyleFactory.create("gtk"))
+        elif sys.platform == "darwin":
+            app.setStyle(QStyleFactory.create("macintosh"))
+
         self.init_settings()
 
     def init_ui(self):
         # ----- FIRST ROW : Scanning for animations files -----
-        self.groupBoxScanning = create_group_box("STEP I - Scan")
-        self.buttonScan = create_button(self, "Scan for animations", self.scan_folder)
+        self.groupBoxScanning = create_group_box(self, "STEP I")
+        self.buttonScan = create_button(self, "Scan Folder", self.scan_folder)
         self.buttonLoad = create_button(self, "Load plugin", self.load_xml)
-        label_anims_found = create_label("Animations found : ")
+
+        self.groupBoxAnalytics = create_group_box(self, "Analytics")
+        label_anims_found = create_label(self, "Animations found ")
+        label_anims_checked = create_label(self, " Animations checked")
+        self.lcdAnimsChecked = create_lcd(self)
         self.lcdAnimsFound = create_lcd(self)
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.buttonScan)
         hbox.addWidget(self.buttonLoad)
-        hbox.addStretch(1)
-        hbox.addWidget(label_anims_found)
-        hbox.addWidget(self.lcdAnimsFound)
 
         self.groupBoxScanning.setLayout(hbox)
-        self.mainLayout.addWidget(self.groupBoxScanning)
+
+        hbox = QHBoxLayout()
+        hbox.addWidget(label_anims_found)
+        hbox.addWidget(self.lcdAnimsFound)
+        hbox.addWidget(self.lcdAnimsChecked)
+        hbox.addWidget(label_anims_checked)
+        self.groupBoxAnalytics.setLayout(hbox)
+
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.groupBoxScanning)
+        hbox.addWidget(self.groupBoxAnalytics)
+
+        self.mainLayout.addItem(hbox)
 
         # ----- SECOND ROW : List animations files -----
-        self.groupBoxAnim = create_group_box("STEP II - Select")
+        self.groupBoxAnim = create_group_box(self, "STEP II")
         self.treeAnimFiles = AnimTreeWidget()
 
         vbox = QVBoxLayout()
@@ -72,19 +95,22 @@ class OSelectorWindow(MainWindow):
         self.mainLayout.addWidget(self.groupBoxAnim)
 
         # ----- THIRD ROW : Generate plugin -----
-        self.groupBoxGenerate = create_group_box("STEP III - Generate")
+        self.groupBoxGenerate = create_group_box(self, "STEP III")
         self.buttonGenerate = create_button(self, "Generate Plugin", self.generate_plugin)
-        label_anims_checked = create_label("Animations checked : ")
-        self.lcdAnimsChecked = create_lcd(self)
+        self.buttonInstallFolder = create_button(self, "Set Install Folder", self.set_install_folder)
+        self.buttonInstallFolder.setMaximumWidth(150)
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.buttonGenerate)
-        hbox.addStretch(1)
-        hbox.addWidget(label_anims_checked)
-        hbox.addWidget(self.lcdAnimsChecked)
-
+        hbox.addWidget(self.buttonInstallFolder)
         self.groupBoxGenerate.setLayout(hbox)
-        self.mainLayout.addWidget(self.groupBoxGenerate)
+
+        hbox = QHBoxLayout()
+        hbox.addStretch(1)
+        hbox.addWidget(self.groupBoxGenerate)
+        hbox.addStretch(1)
+
+        self.mainLayout.addItem(hbox)
 
     def init_settings(self):
         if get_config().getboolean("CONFIG", "bFirstTime"):
@@ -227,11 +253,33 @@ class OSelectorWindow(MainWindow):
 
         self.toggle_window(True)
 
+    def set_install_folder(self):
+        folder = get_config().get("PATHS", "installFolder")
+        if folder:
+            answer = question(self, "Overwrite ?", "Install folder already set to :\n" + str(folder) + "\n\n" + "Do you want to overwrite it ?")
+            if answer == QMessageBox.No:
+                return
+
+        folder = QFileDialog.getExistingDirectory(self, 'Mod folder location', '', QFileDialog.ShowDirsOnly)
+
+        if folder:
+            get_config().set("PATHS", "installFolder", str(folder))
+
+        get_config().set("CONFIG", "bFirstTime", "False")
+        save_config()
+        return str(folder)
+
     def slot_lcd_display_anim_checked(self):
         self.lcdAnimsChecked.display(self.treeAnimFiles.animation_count())
 
     def generate_plugin(self):
         logging.info("=============== GENERATING PLUGIN ===============")
+
+        if not get_config().get("PATHS", "installFolder"):
+            QMessageBox.information(self, "Folder missing", "Installation folder not set, please specify one")
+            if not self.set_install_folder():
+                QMessageBox.warning(self, "Folder missing", "No installation folder specified. Aborting")
+                return
 
         plugin_name, ok = QInputDialog.getText(self, "Plugin Name", "Enter the plugin name", text=get_config().get("PLUGIN", "name"))
 

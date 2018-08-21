@@ -12,10 +12,11 @@ def create_button(parent, text, fun):
     return button
 
 
-def create_group_box(text):
-    group_box = QGroupBox(text)
+def create_group_box(self, text):
+    group_box = QGroupBox(text, self)
     group_box.setFont(get_title_font())
     group_box.setAlignment(Qt.AlignHCenter)
+    group_box.setMinimumWidth(400)
     return group_box
 
 
@@ -25,8 +26,8 @@ def create_lcd(parent):
     return lcd
 
 
-def create_label(text):
-    label = QLabel(text)
+def create_label(self, text):
+    label = QLabel(text, self)
     label.setFont(get_normal_font())
     return label
 
