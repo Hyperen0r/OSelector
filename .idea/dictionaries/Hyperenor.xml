@@ -1,15 +1,28 @@
 <component name="ProjectDictionaryState">
   <dictionary name="Hyperenor">
     <words>
+      <w>anims</w>
       <w>asctime</w>
       <w>bahnschrift</w>
+      <w>bfirsttime</w>
+      <w>busemodorganizer</w>
+      <w>defaultanimationicon</w>
+      <w>defaultfoldericon</w>
+      <w>defaultpackageicon</w>
+      <w>defaultseticon</w>
       <w>fnis</w>
       <w>hbox</w>
+      <w>installfolder</w>
       <w>killmove</w>
       <w>levelname</w>
+      <w>maxitemperpage</w>
+      <w>maxitemstringlength</w>
       <w>osplug</w>
+      <w>pluginfolder</w>
+      <w>plugininstall</w>
       <w>skyrim</w>
       <w>stickarmships</w>
+      <w>stickfigplus</w>
       <w>sticktpose</w>
       <w>vbox</w>
     </words>
