@@ -97,7 +97,7 @@ It will automatically generate a new one.
 
 
 
-##Tools used
+## Tools used
 
 * IDE : [PyCharm Community Edition](https://www.jetbrains.com/pycharm/download/#section=windows)
 * Python : 3.6 (PyInstaller does not support 3.7 for now)
