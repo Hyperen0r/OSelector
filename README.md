@@ -17,7 +17,7 @@ Description of MyAnimation from **OSA**:
 [Nexus Link](https://www.nexusmods.com/skyrim/mods/76744/?tab=description&topic_id=5756447)
 
 ### With just a click :
-![Tool Overview](ressources/tool_overview.png)
+[![tool_overview.png](https://s15.postimg.cc/nxieacmcb/tool_overview.png)](https://postimg.cc/image/iyuvvtijb/)
 
 
 
