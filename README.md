@@ -2,10 +2,26 @@ PS: If you want a better looking version, visit this **[LINK](https://hyperen0r.
 
 # OSelector
 
-**OSelector** is a tool to generate a poser plugin for **OSA**. You can easily generate
-a plugin for any mod you have installed, allowing you to test every animation using **FNIS**
-through **OSA UI**. The plugin is an xml file using the *MyAnimation* functionality. So no
-esp slot taken.
+**OSelector** is a tool to automatically generate a poser plugin for **OSA**
+based on a folder, whether it is your entire data/ folder, or a mod folder. With this
+plugin, OSA UI will be able to display a navigation menu, allowing you to play single
+animation. With this tool, you can easily and quickly play an animation from any mod,
+with a simple navigation menu. Whether you want an navigation menu for a folder
+containing 10 animations or 14000 animations from your entire data/, 
+the menu will be automatically splitted into differents folder with appropriate name
+if possible. However, if you want a better menu, you can edit the menu by :
+
+* reorganizing folders and entries with a drag&drop functionality and a few other actions
+* editing names of the folder and entries
+* editing icon displayed by the menu
+
+Animations that can be played are the ones which are registered using FNIS. The plugin
+is just an xml file, which is read by OSA, so no esp taken. It also means that any
+animation mod author can pack with his mod the generated plugin.
+It will be ignored for those who do not have OSA installed, but those who do
+can easily and quickly preview their animations.
+
+This plugin use the *MyAnimation* functionality from **OSA**:
 
 Description of MyAnimation from **OSA**:  
 
@@ -16,9 +32,39 @@ Description of MyAnimation from **OSA**:
 > where it simply plays single animations.  
 [Nexus Link](https://www.nexusmods.com/skyrim/mods/76744/?tab=description&topic_id=5756447)
 
-### With just a click :
+##### Preview of an automatically generated menu after scanning a folder
 [![tool_overview.png](https://s15.postimg.cc/nxieacmcb/tool_overview.png)](https://postimg.cc/image/iyuvvtijb/)
 
+
+## Dependencies
+
+* **[OSA](https://www.nexusmods.com/skyrim/mods/76744/?tab=description&topic_id=5756447)**
+* At least a mod containing animations using **FNIS**,
+otherwise there is no use to launch the tool.
+
+
+## Installation
+
+
+
+### Tool
+* **[Download the tool](https://github.com/Hyperen0r/OSelector/releases)**
+
+You can run the tool anywhere. Also it generates two files in the same folder:
+
+* a config file named **conf.ini**
+* a log file named **logs.log**
+
+If you delete the config file, a new one will be automatically generated with the default
+settings. You can edit this file to better suit your needs. For more information on this,
+please refer **[to the Configuration section](https://github.com/Hyperen0r/OSelector#configurations)**
+
+As for the log file, you can delete without worries, as it will be overwritten/generated
+everytime you launch the tool. If you do not need it you can disable it in the conf.ini file.
+
+### Generated plugin
+
+*(In progress, NOTE: The tool describes what to do if needed)*
 
 
 ## How does it works ?
@@ -65,6 +111,8 @@ can share his file, if he did some edit (better names and organization, like Mor
 
 * Mod Author can add this file to their mod, so when a user has OSA and his mods, he can easily
 cycle through his animations. 
+
+
 
 ## How many animations ?
 
