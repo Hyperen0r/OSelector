@@ -5,10 +5,11 @@ PS: If you want a better looking version, visit this **[LINK](https://hyperen0r.
 **OSelector** is a tool to automatically generate a poser plugin for **OSA**
 based on a folder, whether it is your entire data/ folder, or a mod folder. With this
 plugin. You can easily and quickly play a single animation from any mod,
-from a simple navigation menu displayed through **OSA UI**. Whether you want an navigation menu for a folder
-containing 10 animations or 14000 animations from your entire data/, 
-the menu will be automatically splitted into differents folders with appropriate name
-if possible. However, if you want a better menu, you can edit it by :
+from a simple navigation menu displayed through **OSA UI**.
+Whether you want an navigation menu for a mod containing 10 animations or
+14000 animations from your entire data/, the menu will be automatically splitted
+into differents folders with appropriate name if possible. However, if you want
+a better menu, you can edit it by :
 
 * reorganizing folders and entries with a drag&drop functionality and a few other actions
 * editing names of folders and entries
