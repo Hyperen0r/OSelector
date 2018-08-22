@@ -19,12 +19,6 @@ from PyQt5.QtWidgets import (QApplication, QMessageBox, QFileDialog, QInputDialo
                              QHBoxLayout, QVBoxLayout, QStyleFactory)
 
 
-# TODO Remove comment from line containing an animation
-# TODO Handle unique file
-# TODO Handle merge plugin ?
-# TODO Add choose location install button (Handle packing with other mods)
-
-
 class COLOR(Enum):
     NORMAL = Qt.black
     DUPLICATE = Qt.red
@@ -153,7 +147,7 @@ class OSelectorWindow(MainWindow):
                                                get_config().get("PATHS", "pluginFolder"),
                                                "MyOsa file (*.myo)")
 
-        found = 0
+        found = self.lcdAnimsFound.value()
         if xml_file:
             logging.info("xml_file given : " + xml_file)
             logging.info("Loading")
@@ -177,7 +171,7 @@ class OSelectorWindow(MainWindow):
         packages = []
         previous_package = ""
         anim_package = None
-        counter = 0
+        counter = self.lcdAnimsFound.value()
         max_item_string_length = get_config().getint("PLUGIN", "maxItemStringLength")
 
         if scan_dir:

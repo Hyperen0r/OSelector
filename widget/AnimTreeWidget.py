@@ -8,7 +8,7 @@ from enum import Enum
 from util.Config import get_config
 from widget.QuickyGui import *
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QHeaderView, QMenu, QTreeWidget
+from PyQt5.QtWidgets import QHeaderView, QMenu, QTreeWidget, QMessageBox
 from PyQt5.QtGui import QCursor
 
 
@@ -130,6 +130,15 @@ class AnimTreeWidget(QTreeWidget):
                 counter += child.animation_count(state)
         return counter
 
+    def animations_id(self):
+        root = self.invisibleRootItem()
+
+        animations = []
+        for i in range(root.childCount()):
+            child = root.child(i)
+            animations.extend(child.animations_id())
+        return animations
+
     def check_all(self):
         root = self.invisibleRootItem()
         for i in range(root.childCount()):
@@ -164,7 +173,22 @@ class AnimTreeWidget(QTreeWidget):
         return has_been_removed
 
     def create_from_xml(self, xml_file):
-        self.clear()
+
+        if self.invisibleRootItem().childCount() > 0:
+            box = QMessageBox()
+            box.setIcon(QMessageBox.Question)
+            box.setWindowTitle('Clear or Append ?')
+            box.setText("Do you want to append new animations to the tree"
+                        "or clear the tree and build a new one from the new animations ?")
+            box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            buttonY = box.button(QMessageBox.Yes)
+            buttonY.setText('Clear')
+            buttonN = box.button(QMessageBox.No)
+            buttonN.setText('Append')
+            box.exec_()
+
+            if box.clickedButton() == buttonY:
+                self.clear()
 
         xml = ET.parse(xml_file)
         root = self.invisibleRootItem()
@@ -188,8 +212,26 @@ class AnimTreeWidget(QTreeWidget):
 
     def create_from_packages(self, packages):
 
-        self.clear()
         animations = []
+
+        if self.invisibleRootItem().childCount() > 0:
+            box = QMessageBox()
+            box.setIcon(QMessageBox.Question)
+            box.setWindowTitle('Clear or Append ?')
+            box.setText("Do you want to append new animations to the tree"
+                        "or clear the tree and build a new one from the new animations ?")
+            box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            buttonY = box.button(QMessageBox.Yes)
+            buttonY.setText('Clear')
+            buttonN = box.button(QMessageBox.No)
+            buttonN.setText('Append')
+            box.exec_()
+
+            if box.clickedButton() == buttonY:
+                self.clear()
+            elif box.clickedButton() == buttonN:
+                animations = self.animations_id()
+
         duplicate_counter = 0
 
         root = widget.AnimTreeItem.AnimTreeItem(self)
@@ -241,9 +283,6 @@ class AnimTreeWidget(QTreeWidget):
             menu.addAction("Uncheck All", self.action_uncheck_all)
             menu.addAction("Cleanup", self.cleanup)
             menu.addSeparator()
-            if selection[0].parent():
-                menu.addAction("Move Up", self.action_move_up)
-                menu.addSeparator()
             menu.addAction("Insert parent", self.action_insert_parent)
             menu.addAction("Remove", self.action_remove_from_parent)
             menu.exec_(QCursor.pos())
