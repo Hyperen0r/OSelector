@@ -4,20 +4,20 @@ PS: If you want a better looking version, visit this **[LINK](https://hyperen0r.
 
 **OSelector** is a tool to automatically generate a poser plugin for **OSA**
 based on a folder, whether it is your entire data/ folder, or a mod folder. With this
-plugin, OSA UI will be able to display a navigation menu, allowing you to play single
+plugin, **OSA UI** will be able to display a navigation menu, allowing you to play single
 animation. With this tool, you can easily and quickly play an animation from any mod,
 with a simple navigation menu. Whether you want an navigation menu for a folder
 containing 10 animations or 14000 animations from your entire data/, 
-the menu will be automatically splitted into differents folder with appropriate name
-if possible. However, if you want a better menu, you can edit the menu by :
+the menu will be automatically splitted into differents folders with appropriate name
+if possible. However, if you want a better menu, you can edit it by :
 
 * reorganizing folders and entries with a drag&drop functionality and a few other actions
-* editing names of the folder and entries
-* editing icon displayed by the menu
+* editing names of folders and entries
+* editing icons displayed by the menu
 
 Animations that can be played are the ones which are registered using FNIS. The plugin
-is just an xml file, which is read by OSA, so no esp taken. It also means that any
-animation mod author can pack with his mod the generated plugin.
+is just an xml file, which is read by OSA, so no esp slot is taken. It also means that any
+animation mod author can pack his mod with the generated plugin.
 It will be ignored for those who do not have OSA installed, but those who do
 can easily and quickly preview their animations.
 
@@ -45,8 +45,6 @@ otherwise there is no use to launch the tool.
 
 ## Installation
 
-
-
 ### Tool
 * **[Download the tool](https://github.com/Hyperen0r/OSelector/releases)**
 
@@ -61,6 +59,7 @@ please refer **[to the Configuration section](https://github.com/Hyperen0r/OSele
 
 As for the log file, you can delete without worries, as it will be overwritten/generated
 everytime you launch the tool. If you do not need it you can disable it in the conf.ini file.
+
 
 ### Generated plugin
 
@@ -78,28 +77,35 @@ of your choice.
 
 
 
-## How does it works ?
+## Basic usage
 
-There is three major step :
 
-* First step is to scan the folder of your choice *(usually data/ or mods/)*.
-It will register every animation using **FNIS**
+* First step is to specify the folder you wish to scan for animations *(usually data/ or mods/)*.
+It will register every animation using **FNIS**. It will automatically build a menu for you,
+with appropriate names and structure so you don't have to edit it during step 2, unless you
+want to improve it.
 
-* During second step, a tree structure will be displayed. It represents the navigation menu
-you will see in game. You can make some edit to it, change name and modify the organization.
-To prevent the screen from being cluttered with entries, each page is limited to 25 items (configurable)
-at generation. It means that the tool will organize the tree in such a way that no more
-than 25 items are displayed. But if you edit it yourself, this rule is not applied
-(Meaning you can force a page to have more than 25 entries). 
+* During second step, the menu will be displayed. It is represented by a tree structure.
+That's how it will be organized in-game. Next, if you want to improve it, you can edit the
+tree by changing names, reorganizing folders and entries and changing their icon.
+To prevent the screen from being cluttered with entries, at generation each page is limited
+to 25 items (configurable). It means that the tool will organize the tree in such a way
+that an folder cannot have more than 25 entries. But if you edit it yourself with **Drag&Drop**
+this rule is not applied (Meaning you can force a page to have more than 25 entries). 
 
-* The third and final step is the plugin generation, where you specify the
-name of your plugin.
+* The third and final step is the plugin generation, where you just have to click on
+**Generate Plugin** and specify the name of your plugin.
 
-If you use Mod Organizer, the plugin should be installed in your mods folder. Then you just have to
-activate it in Mod Organizer.
+If you make no edit to the tree, this process should not take more than two minute,
+depending of your hardware and the number of animations. For example, I have currently
+~14 000 animations installed. When using the tool, it took only 18 seconds from opening
+to the plugin's generation.
 
-You can also load existing plugin and tweak it.
 
+## Other functionalities
+
+* You can also edit existing plugin by loading them. After this, you can scan other folders or
+even load other plugins to add them to the menu and merge them. 
 
 
 ## Usage In-Game
@@ -111,17 +117,17 @@ number of animations and your PC, it can take some time to load the plugin.
 
 ## For who is this tool ?
 
-Anyone who want to make an easy navigation menu for a mod containing animations
+* Anyone who want to quickly want to make navigation menu for a mod containing animations
 or for his entire data folder.
 
-Anyone who want to make a navigation menu with better names and organization or to tweak an 
-existing one
+* Anyone who want to make a navigation menu with better names and organization or to tweak an 
+existing one .Also everyone can share his file, if he did a menu with better names and
+organization, like Morra's Poser Pack. But the user have to have the animations installed.
+Or the user can load the shared plugin and remove the animations he does not have.
 
-* Mod Users can just launch the tool to have a menu for every or some animations. Everyone 
-can share his file, if he did some edit (better names and organization, like Morra's Poser Pack).
-
-* Mod Author can add this file to their mod, so when a user has OSA and his mods, he can easily
-cycle through his animations. 
+* Mod Authors can use the tool to generate a poser plugin for theirs animation mod and 
+add it to the package. So when a user has OSA and the mod, he can easily cycle
+through his animations, without using rings. 
 
 
 
