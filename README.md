@@ -17,7 +17,7 @@ Description of MyAnimation from **OSA**:
 [Nexus Link](https://www.nexusmods.com/skyrim/mods/76744/?tab=description&topic_id=5756447)
 
 ### With just a click :
-![Tool Overview](ressources/tool_overview.png)
+[![tool_overview.png](https://s15.postimg.cc/nxieacmcb/tool_overview.png)](https://postimg.cc/image/iyuvvtijb/)
 
 
 
@@ -97,7 +97,7 @@ It will automatically generate a new one.
 
 
 
-##Tools used
+## Tools used
 
 * IDE : [PyCharm Community Edition](https://www.jetbrains.com/pycharm/download/#section=windows)
 * Python : 3.6 (PyInstaller does not support 3.7 for now)
