@@ -19,11 +19,12 @@ class AnimTreeItem(QTreeWidgetItem):
         super().__init__(*__args)
         self.setFlags(self.flags())
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ICON.value, get_config().get("PLUGIN", "defaultFolderIcon"))
+        self.setTextAlignment(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ICON.value, Qt.AlignCenter)
         self.setCheckState(0, Qt.Checked)
         self.splitterCounter = 0
         self.splitterIndex = 0
         self.levelTwoCounter = 0
-        self.maxChildCount = get_config().get("PLUGIN", "maxItemStringLength")
+        self.maxChildCount = get_config().getint("PLUGIN", "maxItemStringLength")
         self.bIsSplitter = False
 
     @classmethod
@@ -44,6 +45,11 @@ class AnimTreeItem(QTreeWidgetItem):
         # If there are already splitter let's try to add the item to the first available
         for i in range(self.childCount()):
             splitter = self.child(i)
+            try:
+                test = splitter.bIsSplitter
+            except AttributeError:
+                log.warning("TreeItem detected ! Should be AnimTreeItem, trying to convert it")
+                AnimTreeItem.convert_to_anim_tree_item(splitter)
             if splitter.bIsSplitter:
                 if splitter.childCount() < splitter.maxChildCount:
                     return splitter.addChild(item)
@@ -65,8 +71,16 @@ class AnimTreeItem(QTreeWidgetItem):
                 child = self.takeChild(index+1)
                 if not child:
                     child = AnimTreeItem()
+
+                try:
+                    test = child.bIsSplitter
+                except AttributeError:
+                    log.warning("TreeItem detected ! Should be AnimTreeItem, trying to convert it")
+                    AnimTreeItem.convert_to_anim_tree_item(child)
+
                 if child.bIsSplitter:
                     child.setText(0, "Set " + str(i+1))
+
                 splitter.addChild(child)
 
             splitter = self.insert_splitter()
@@ -82,11 +96,11 @@ class AnimTreeItem(QTreeWidgetItem):
                 child = self.child(i)
                 if child.checkState(0) != state:
                     try:
-                        counter += child.animation_count(state)
+                        test = child.bIsSplitter
                     except AttributeError:
                         log.warning("TreeItem detected ! Should be AnimTreeItem, trying to convert it")
                         AnimTreeItem.convert_to_anim_tree_item(child)
-                        counter += child.animation_count(state)
+                    counter += child.animation_count(state)
 
             return counter
         else:
@@ -98,15 +112,14 @@ class AnimTreeItem(QTreeWidgetItem):
             for i in range(self.childCount()):
                 child = self.child(i)
                 try:
-                    animations.extend(child.animations_id())
+                    test = child.bIsSplitter
                 except AttributeError:
                     log.warning("TreeItem detected ! Should be AnimTreeItem, trying to convert it")
                     AnimTreeItem.convert_to_anim_tree_item(child)
-                    animations.extend(child.animations_id())
-
+                animations.extend(child.animations_id())
             return animations
         else:
-            return self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ID.value)
+            return [self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ID.value)]
 
     def to_xml(self, parent, level):
         if self.bIsSplitter or not self.is_anim():
@@ -121,11 +134,11 @@ class AnimTreeItem(QTreeWidgetItem):
                 child = self.child(i)
                 if child.checkState(0) != Qt.Unchecked:
                     try:
-                        child.to_xml(elt, level + 1)
+                        test = child.bIsSplitter
                     except AttributeError:
                         log.warning("TreeItem detected ! Should be AnimTreeItem, trying to convert it")
                         AnimTreeItem.convert_to_anim_tree_item(child)
-                        child.to_xml(elt, level + 1)
+                    child.to_xml(elt, level + 1)
         else:
             entry = ET.SubElement(parent, "entry")
             entry.set("n", self.text(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.NAME.value))
@@ -179,11 +192,3 @@ class AnimTreeItem(QTreeWidgetItem):
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.FILE.value, str(animation.stages_file[i]))
         self.setText(widget.AnimTreeWidget.AnimTreeWidget.COLUMN.ANIM_OBJ.value, str(animation.stages_obj[i]))
 
-    @classmethod
-    def convert_to_anim_tree_item(cls, obj):
-        obj.__class__ = cls
-        obj.bIsSplitter = False
-        obj.splitterCounter = 0
-        obj.splitterIndex = 0
-        obj.levelTwoCounter = 0
-        obj.maxChildCount = get_config().get("PLUGIN", "maxItemStringLength")

@@ -62,25 +62,38 @@ class AnimTreeWidget(QTreeWidget):
         self.setEditTriggers(QTreeWidget.DoubleClicked | QTreeWidget.EditKeyPressed)
         self.setSelectionMode(self.ExtendedSelection)
 
-    def action_insert_parent(self, item=None, parent=None):
-        if not parent:
-            parent = widget.AnimTreeItem.AnimTreeItem()
-            parent.setText(0, "New Parent")
+    def action_insert_parent(self):
+        items = self.selectedItems()
+        newParent = widget.AnimTreeItem.AnimTreeItem()
+        newParent.setText(0, "New Parent")
 
-        if not item:
-            items = self.selectedItems()
-            for item in items:
-                self.action_insert_parent(item, parent)
-            return True
+        # We want the lowest parent (Meaning the parent the most close to the root)
+        items_parent = []
+        for item in items:
+            if item in items_parent:
+                items_parent.clear()
 
-        actual_parent = item.parent()
-        if not actual_parent:
-            actual_parent = self.invisibleRootItem()
+            item_parent = item.parent()
+            if not item_parent:
+                item_parent = self.invisibleRootItem()
 
-        index = actual_parent.indexOfChild(item)
-        item = actual_parent.takeChild(index)
-        parent.addChild(item)
-        actual_parent.insertChild(index, parent)
+            if not item_parent in items:
+                items_parent.append((item_parent, item))
+
+        parent, item = items_parent[0]
+
+        index = parent.indexOfChild(item)
+        parent.insertChild(index, newParent)
+
+        for item in items:
+            item_parent = item.parent()
+            if not item_parent:
+                item_parent = self.invisibleRootItem()
+
+            item_index = item_parent.indexOfChild(item)
+            child = item_parent.takeChild(item_index)
+            newParent.add_nested_child(child)
+        self.cleanup()
         return
 
     def action_move_up(self, item=None):
@@ -101,6 +114,22 @@ class AnimTreeWidget(QTreeWidget):
         item_index = n1.indexOfChild(item)
         item = n1.takeChild(item_index)
         n2.addChild(item)
+        return True
+
+    def action_merge(self):
+        items = self.selectedItems()
+        parent = items.pop(0)
+
+        p2 = parent.parent()
+        if not p2:
+            p2 = self.invisibleRootItem()
+
+        for item in items:
+            for child_index in range(item.childCount()):
+                child = item.takeChild(0)
+                parent.add_nested_child(child)
+            p2.removeChild(item)
+
         return True
 
     def action_remove_from_parent(self, item=None):
@@ -127,6 +156,11 @@ class AnimTreeWidget(QTreeWidget):
         for i in range(root.childCount()):
             child = root.child(i)
             if child.checkState(0) != state:
+                try:
+                    test = child.bIsSplitter
+                except AttributeError:
+                    log.warning("TreeItem detected ! Should be AnimTreeItem, trying to convert it")
+                    widget.AnimTreeItem.AnimTreeItem.convert_to_anim_tree_item(child)
                 counter += child.animation_count(state)
         return counter
 
@@ -136,6 +170,12 @@ class AnimTreeWidget(QTreeWidget):
         animations = []
         for i in range(root.childCount()):
             child = root.child(i)
+            try:
+                test = child.bIsSplitter
+            except AttributeError:
+                log.warning("TreeItem detected ! Should be AnimTreeItem, trying to convert it")
+                widget.AnimTreeItem.AnimTreeItem.convert_to_anim_tree_item(child)
+
             animations.extend(child.animations_id())
         return animations
 
@@ -174,44 +214,6 @@ class AnimTreeWidget(QTreeWidget):
 
     def create_from_xml(self, xml_file):
 
-        if self.invisibleRootItem().childCount() > 0:
-            box = QMessageBox()
-            box.setIcon(QMessageBox.Question)
-            box.setWindowTitle('Clear or Append ?')
-            box.setText("Do you want to append new animations to the tree"
-                        "or clear the tree and build a new one from the new animations ?")
-            box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-            buttonY = box.button(QMessageBox.Yes)
-            buttonY.setText('Clear')
-            buttonN = box.button(QMessageBox.No)
-            buttonN.setText('Append')
-            box.exec_()
-
-            if box.clickedButton() == buttonY:
-                self.clear()
-
-        xml = ET.parse(xml_file)
-        root = self.invisibleRootItem()
-        counter = self.add_item_from_xml(root, xml.getroot())
-
-        return counter
-
-    def add_item_from_xml(self, parent, elt):
-        counter = 0
-        for child in elt:
-            item = widget.AnimTreeItem.AnimTreeItem()
-            item.setText(self.COLUMN.NAME.value, child.get("n"))
-            item.setText(self.COLUMN.ICON.value, child.get("i") or get_config().get("PLUGIN", "defaultFolderIcon"))
-            if child.get("id"):
-                counter += 1
-                item.setText(self.COLUMN.ID.value, child.get("id"))
-            parent.addChild(item)
-            log.info(child)
-            counter += self.add_item_from_xml(item, child)
-        return counter
-
-    def create_from_packages(self, packages):
-
         animations = []
 
         if self.invisibleRootItem().childCount() > 0:
@@ -229,10 +231,59 @@ class AnimTreeWidget(QTreeWidget):
 
             if box.clickedButton() == buttonY:
                 self.clear()
-            elif box.clickedButton() == buttonN:
-                animations = self.animations_id()
+            else:
+                answer = question(None, "Duplicates ?", "Do you want to ignore already existing animations ?")
+                if answer == QMessageBox.Yes:
+                    animations = self.animations_id()
 
+        xml = ET.parse(xml_file)
+        root = self.invisibleRootItem()
+        counter = self.add_item_from_xml(root, xml.getroot(), animations)
+
+        return counter
+
+    def add_item_from_xml(self, parent, elt, animations):
+        counter = 0
         duplicate_counter = 0
+        for child in elt:
+            if child.get("id") in animations:
+                duplicate_counter += 1
+                log.info("Duplicate found : " + child.get("n"))
+            else:
+                item = widget.AnimTreeItem.AnimTreeItem()
+                item.setText(self.COLUMN.NAME.value, child.get("n"))
+                item.setText(self.COLUMN.ICON.value, child.get("i") or get_config().get("PLUGIN", "defaultFolderIcon"))
+                if child.get("id"):
+                    counter += 1
+                    item.setText(self.COLUMN.ID.value, child.get("id"))
+                parent.addChild(item)
+                counter += self.add_item_from_xml(item, child, animations)
+        return counter
+
+    def create_from_packages(self, packages):
+
+        animations = []
+        duplicate_counter = 0
+
+        if self.invisibleRootItem().childCount() > 0:
+            box = QMessageBox()
+            box.setIcon(QMessageBox.Question)
+            box.setWindowTitle('Clear or Append ?')
+            box.setText("Do you want to append new animations to the tree"
+                        "or clear the tree and build a new one from the new animations ?")
+            box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            buttonY = box.button(QMessageBox.Yes)
+            buttonY.setText('Clear')
+            buttonN = box.button(QMessageBox.No)
+            buttonN.setText('Append')
+            box.exec_()
+
+            if box.clickedButton() == buttonY:
+                self.clear()
+            elif box.clickedButton() == buttonN:
+                answer = question(None, "Duplicates ?", "Do you want to ignore already existing animations ?")
+                if answer == QMessageBox.Yes:
+                    animations = self.animations_id()
 
         root = widget.AnimTreeItem.AnimTreeItem(self)
         for package in packages:
@@ -284,6 +335,7 @@ class AnimTreeWidget(QTreeWidget):
             menu.addAction("Cleanup", self.cleanup)
             menu.addSeparator()
             menu.addAction("Insert parent", self.action_insert_parent)
+            menu.addAction("Merge", self.action_merge)
             menu.addAction("Remove", self.action_remove_from_parent)
             menu.exec_(QCursor.pos())
         return
@@ -297,5 +349,11 @@ class AnimTreeWidget(QTreeWidget):
         for i in range(root.childCount()):
             child = root.child(i)
             if child.checkState(0) != Qt.Unchecked:
+                try:
+                    test = child.bIsSplitter
+                except AttributeError:
+                    log.warning("TreeItem detected ! Should be AnimTreeItem, trying to convert it")
+                    widget.AnimTreeItem.AnimTreeItem.convert_to_anim_tree_item(child)
+
                 child.to_xml(folder0, 1)
         return folder0

@@ -19,6 +19,9 @@ from PyQt5.QtWidgets import (QApplication, QMessageBox, QFileDialog, QInputDialo
                              QHBoxLayout, QVBoxLayout, QStyleFactory)
 
 
+# TODO Fix Selection Action when selecting multiple different level
+# TODO Automatically merged folder with the same name ?
+
 class COLOR(Enum):
     NORMAL = Qt.black
     DUPLICATE = Qt.red
@@ -46,21 +49,17 @@ class OSelectorWindow(MainWindow):
         self.buttonScan = create_button(self, "Scan Folder", self.scan_folder)
         self.buttonLoad = create_button(self, "Load plugin", self.load_xml)
 
-        self.groupBoxAnalytics = create_group_box(self, "Analytics")
-        label_anims_found = create_label(self, "Animations found ")
-        label_anims_checked = create_label(self, " Animations checked")
-        self.lcdAnimsChecked = create_lcd(self)
-        self.lcdAnimsFound = create_lcd(self)
-
         hbox = QHBoxLayout()
         hbox.addWidget(self.buttonScan)
         hbox.addWidget(self.buttonLoad)
-
         self.groupBoxScanning.setLayout(hbox)
 
+        self.groupBoxAnalytics = create_group_box(self, "Analytics")
+        self.groupBoxAnalytics.setMaximumWidth(400)
+        label_anims_checked = create_label(self, " Animations checked")
+        self.lcdAnimsChecked = create_lcd(self)
+
         hbox = QHBoxLayout()
-        hbox.addWidget(label_anims_found)
-        hbox.addWidget(self.lcdAnimsFound)
         hbox.addWidget(self.lcdAnimsChecked)
         hbox.addWidget(label_anims_checked)
         self.groupBoxAnalytics.setLayout(hbox)
@@ -133,6 +132,11 @@ class OSelectorWindow(MainWindow):
             get_config().set("CONFIG", "bFirstTime", "False")
             save_config()
 
+    def after_tree_built(self):
+        self.treeAnimFiles.cleanup()
+        self.treeAnimFiles.itemClicked.connect(self.slot_lcd_display_anim_checked)
+        self.slot_lcd_display_anim_checked()
+
     def toggle_window(self, state):
         self.groupBoxGenerate.setDisabled(not state)
         self.groupBoxAnim.setDisabled(not state)
@@ -141,23 +145,18 @@ class OSelectorWindow(MainWindow):
     def load_xml(self):
         self.toggle_window(False)
 
-        xml_file, filter = QFileDialog.getOpenFileName(self, "Open file",
-                                               get_config().get("PATHS", "installFolder") + "/" +
-                                               get_config().get("PLUGIN", "name") + "/" +
+        name = get_config().get("CONFIG", "lastName") or get_config().get("PLUGIN", "name")
+        xml_file, _filter = QFileDialog.getOpenFileName(self, "Open file",
+                                               get_config().get("PATHS", "installFolder") + "/" + name + "/" +
                                                get_config().get("PATHS", "pluginFolder"),
                                                "MyOsa file (*.myo)")
-
-        found = self.lcdAnimsFound.value()
         if xml_file:
             logging.info("xml_file given : " + xml_file)
             logging.info("Loading")
 
             found = self.treeAnimFiles.create_from_xml(xml_file)
 
-        self.treeAnimFiles.itemClicked.connect(self.slot_lcd_display_anim_checked)
-        self.slot_lcd_display_anim_checked()
-        self.lcdAnimsFound.display(found)
-
+        self.after_tree_built()
         self.toggle_window(True)
 
     def scan_folder(self):
@@ -168,10 +167,10 @@ class OSelectorWindow(MainWindow):
                                                     get_config().get("PATHS", "installFolder"),
                                                     QFileDialog.ShowDirsOnly)
 
+        counter = 0
         packages = []
         previous_package = ""
         anim_package = None
-        counter = self.lcdAnimsFound.value()
         max_item_string_length = get_config().getint("PLUGIN", "maxItemStringLength")
 
         if scan_dir:
@@ -238,12 +237,13 @@ class OSelectorWindow(MainWindow):
 
             packages.sort(key=lambda x: x.name, reverse=False)
             duplicate = self.treeAnimFiles.create_from_packages(packages)
-            QMessageBox.information(self, "Results", str(duplicate) + " duplicates found (Not added)\n"
-                                                                  "List (WARNING Level) available in logs (if activated)")
-            self.treeAnimFiles.cleanup()
-            self.treeAnimFiles.itemClicked.connect(self.slot_lcd_display_anim_checked)
-            self.slot_lcd_display_anim_checked()
-            self.lcdAnimsFound.display(counter)
+
+            if duplicate > 0:
+                QMessageBox.information(self, "Results", str(duplicate) +
+                                        " duplicates found (Not added)\n"
+                                        "List (WARNING Level) available in logs (if activated)")
+
+            self.after_tree_built()
 
         self.toggle_window(True)
 
@@ -275,11 +275,14 @@ class OSelectorWindow(MainWindow):
                 QMessageBox.warning(self, "Folder missing", "No installation folder specified. Aborting")
                 return
 
-        plugin_name, ok = QInputDialog.getText(self, "Plugin Name", "Enter the plugin name", text=get_config().get("PLUGIN", "name"))
+        name = get_config().get("CONFIG", "lastName") or get_config().get("PLUGIN", "name")
+        plugin_name, ok = QInputDialog.getText(self, "Plugin Name", "Enter the plugin name", text=name)
 
         if ok:
             if plugin_name:
 
+                get_config().set("CONFIG", "lastName", plugin_name)
+                save_config()
                 path_plugin_folder = get_config().get("PATHS", "installFolder") + "/" + \
                                      plugin_name + "/" + \
                                      get_config().get("PATHS", "pluginFolder")

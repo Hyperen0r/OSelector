@@ -14,10 +14,10 @@ def create_config():
     config.add_section("CONFIG")
     config.set("CONFIG", "bFirstTime", "True")
     config.set("CONFIG", "bUseModOrganizer", "True")
+    config.set("CONFIG", "lastName", "")
 
     config.add_section("PLUGIN")
     config.set("PLUGIN", "name", "OSelector")
-    config.set("PLUGIN", "osplug", "OSelector")
     config.set("PLUGIN", "defaultPackageIcon", "omu_skyrim")
     config.set("PLUGIN", "defaultFolderIcon", "omu_stickarmships")
     config.set("PLUGIN", "defaultSetIcon", "omu_stickarmships")
