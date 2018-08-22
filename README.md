@@ -64,7 +64,18 @@ everytime you launch the tool. If you do not need it you can disable it in the c
 
 ### Generated plugin
 
-*(In progress, NOTE: The tool describes what to do if needed)*
+When launching the tool for the first time (or after erasing the conf.ini file), the tool will
+ask you if you use **Mod Organizer**. If you do, you have to specify the _mods/_ folder
+of **Mod Organizer**. If you do so, the plugin will be installed in the _mods/_ folder,
+which means you just have to refresh the left pane of __Mod Organizer__ and activate the plugin.
+For the next time, if you generate a plugin with the same name, you don't need to do anything,
+since the plugin is already activated and the old file will be overwritten.
+
+If you don't use **Mod Organizer**, you can specify the _data/_ folder of your installation. 
+You won't have to do anything. As for using other mod manager, I'm not sure how they store
+mods. One way is to archive the generated plugin and install it with your mod manager
+of your choice.
+
 
 
 ## How does it works ?
