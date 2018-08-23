@@ -7,8 +7,8 @@ based on a folder, whether it is your entire data/ folder, or a mod folder. With
 plugin. You can easily and quickly play a single animation from any mod,
 from a simple navigation menu displayed through **OSA UI**.
 Whether you want an navigation menu for a mod containing 10 animations or
-14000 animations from your entire data/, the menu will be automatically splitted
-into differents folders with appropriate name if possible. However, if you want
+14000 animations from your entire data/ folder, the menu will be automatically generated
+ and splitted into differents folders with appropriate name when possible. However, if you want
 a better menu, you can edit it by :
 
 * reorganizing folders and entries with a drag&drop functionality and a few other actions
