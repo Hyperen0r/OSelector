@@ -4,6 +4,7 @@
 import os
 import sys
 import logging
+import subprocess
 import xml.etree.ElementTree as ET
 
 from enum import Enum
@@ -135,6 +136,7 @@ class OSelectorWindow(MainWindow):
     def after_tree_built(self):
         self.treeAnimFiles.cleanup()
         self.treeAnimFiles.itemClicked.connect(self.slot_lcd_display_anim_checked)
+        self.treeAnimFiles.itemChanged.connect(self.slot_lcd_display_anim_checked)
         self.slot_lcd_display_anim_checked()
 
     def toggle_window(self, state):
@@ -308,10 +310,19 @@ class OSelectorWindow(MainWindow):
                     data = ET.tostring(xml_root, "unicode")
                     file.write(data)
 
-                QMessageBox.information(self, "Results",
-                                        "Plugin Generation Done !\n"
-                                        "----- Plugin path -----\n" +
-                                        path_plugin_folder)
+                msg_box = QMessageBox()
+                msg_box.setWindowTitle("Results")
+                msg_box.setIcon(QMessageBox.Information)
+                msg_box.setText("Plugin Generation Done !\n"
+                                "----- Plugin path -----\n" +
+                                path_plugin_folder)
+                msg_box.addButton(QPushButton("Open Folder"), QMessageBox.ActionRole)
+                msg_box.addButton(QPushButton("Ok"), QMessageBox.YesRole)
+                msg_box.exec_()
+
+                if msg_box.buttonRole(msg_box.clickedButton()) == QMessageBox.ActionRole:
+                    os.startfile(os.path.realpath(path_plugin_folder))
+
             else:
                 QMessageBox.warning(self, "Abort", "Enter valid name")
 

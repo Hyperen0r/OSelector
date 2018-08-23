@@ -117,6 +117,9 @@ to the plugin's generation.
 * You can also edit existing plugin by loading them. After this, you can scan other folders or
 even load other plugins to add them to the menu and merge them. 
 
+* **Cleanup** button is removing folders with 0 child. If a folder has only
+one child, the child replace the folder.
+
 
 ## Usage In-Game
 

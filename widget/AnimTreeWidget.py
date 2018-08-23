@@ -93,7 +93,6 @@ class AnimTreeWidget(QTreeWidget):
             item_index = item_parent.indexOfChild(item)
             child = item_parent.takeChild(item_index)
             newParent.add_nested_child(child)
-        self.cleanup()
         return
 
     def action_move_up(self, item=None):
@@ -118,6 +117,24 @@ class AnimTreeWidget(QTreeWidget):
 
     def action_merge(self):
         items = self.selectedItems()
+
+        items_parent = []
+        for item in items:
+            item_parent = item.parent()
+            if not items_parent:
+                items_parent = self.invisibleRootItem()
+
+            if item_parent in items:
+                QMessageBox.warning(self, "Merge Action", "One selected folder is a parent of another selected folder !\n"
+                                                          "Merging folders with both parent and child selected is not supported !\n"
+                                                          "Select only folders from the same level")
+                return
+
+            if item.is_anim():
+                QMessageBox.warning(self, "Merge Action", "Merging animations is not allowed !\n"
+                                                          "Select only folders from the same level")
+                return
+
         parent = items.pop(0)
 
         p2 = parent.parent()
