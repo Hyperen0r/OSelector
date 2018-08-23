@@ -90,7 +90,6 @@ of your choice.
 
 ## Basic usage
 
-
 * First step is to specify the folder you wish to scan for animations *(usually data/ or mods/)*.
 It will register every animation using **FNIS**. It will automatically build a menu for you,
 with appropriate names and structure so you don't have to edit it during step 2, unless you
@@ -108,8 +107,8 @@ this rule is not applied (Meaning you can force a page to have more than 25 entr
 **Generate Plugin** and specify the name of your plugin.
 
 If you make no edit to the tree, this process should not take more than two minute,
-depending of your hardware and the number of animations. For example, I have currently
-~14 000 animations installed. When using the tool, it took only 18 seconds from opening
+depending on your hardware and the number of animations. For example, I have currently
+~14 000 animations installed. With the tool, it took only 18 seconds from opening
 to the plugin's generation.
 
 
