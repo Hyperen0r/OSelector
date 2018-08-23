@@ -136,7 +136,6 @@ class OSelectorWindow(MainWindow):
     def after_tree_built(self):
         self.treeAnimFiles.cleanup()
         self.treeAnimFiles.itemClicked.connect(self.slot_lcd_display_anim_checked)
-        self.treeAnimFiles.itemChanged.connect(self.slot_lcd_display_anim_checked)
         self.slot_lcd_display_anim_checked()
 
     def toggle_window(self, state):

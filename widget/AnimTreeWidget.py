@@ -176,7 +176,6 @@ class AnimTreeWidget(QTreeWidget):
                 try:
                     test = child.bIsSplitter
                 except AttributeError:
-                    log.warning("TreeItem detected ! Should be AnimTreeItem, trying to convert it")
                     widget.AnimTreeItem.AnimTreeItem.convert_to_anim_tree_item(child)
                 counter += child.animation_count(state)
         return counter
@@ -190,7 +189,6 @@ class AnimTreeWidget(QTreeWidget):
             try:
                 test = child.bIsSplitter
             except AttributeError:
-                log.warning("TreeItem detected ! Should be AnimTreeItem, trying to convert it")
                 widget.AnimTreeItem.AnimTreeItem.convert_to_anim_tree_item(child)
 
             animations.extend(child.animations_id())
@@ -301,7 +299,6 @@ class AnimTreeWidget(QTreeWidget):
                 answer = question(None, "Duplicates ?", "Do you want to ignore already existing animations ?")
                 if answer == QMessageBox.Yes:
                     animations = self.animations_id()
-
         root = widget.AnimTreeItem.AnimTreeItem(self)
         for package in packages:
             section = widget.AnimTreeItem.AnimTreeItem()

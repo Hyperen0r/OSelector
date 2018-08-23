@@ -48,7 +48,6 @@ class AnimTreeItem(QTreeWidgetItem):
             try:
                 test = splitter.bIsSplitter
             except AttributeError:
-                log.warning("TreeItem detected ! Should be AnimTreeItem, trying to convert it")
                 AnimTreeItem.convert_to_anim_tree_item(splitter)
             if splitter.bIsSplitter:
                 if splitter.childCount() < splitter.maxChildCount:
@@ -75,7 +74,6 @@ class AnimTreeItem(QTreeWidgetItem):
                 try:
                     test = child.bIsSplitter
                 except AttributeError:
-                    log.warning("TreeItem detected ! Should be AnimTreeItem, trying to convert it")
                     AnimTreeItem.convert_to_anim_tree_item(child)
 
                 if child.bIsSplitter:
@@ -98,7 +96,6 @@ class AnimTreeItem(QTreeWidgetItem):
                     try:
                         test = child.bIsSplitter
                     except AttributeError:
-                        log.warning("TreeItem detected ! Should be AnimTreeItem, trying to convert it")
                         AnimTreeItem.convert_to_anim_tree_item(child)
                     counter += child.animation_count(state)
 
@@ -114,7 +111,6 @@ class AnimTreeItem(QTreeWidgetItem):
                 try:
                     test = child.bIsSplitter
                 except AttributeError:
-                    log.warning("TreeItem detected ! Should be AnimTreeItem, trying to convert it")
                     AnimTreeItem.convert_to_anim_tree_item(child)
                 animations.extend(child.animations_id())
             return animations
@@ -136,7 +132,6 @@ class AnimTreeItem(QTreeWidgetItem):
                     try:
                         test = child.bIsSplitter
                     except AttributeError:
-                        log.warning("TreeItem detected ! Should be AnimTreeItem, trying to convert it")
                         AnimTreeItem.convert_to_anim_tree_item(child)
                     child.to_xml(elt, level + 1)
         else:
