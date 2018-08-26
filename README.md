@@ -4,7 +4,7 @@ PS: If you want a better looking version, visit this **[LINK](https://hyperen0r.
 
 **OSelector** is a tool to automatically generate a poser plugin for **OSA**
 based on a folder, whether it is your entire data/ folder, or a mod folder. With this
-plugin. You can easily and quickly play a single animation from any mod,
+plugin, you can easily and quickly play a single animation from any mod,
 from a simple navigation menu displayed through **OSA UI**.
 Whether you want an navigation menu for a mod containing 10 animations or
 14000 animations from your entire data/ folder, the menu will be automatically generated
@@ -38,7 +38,7 @@ Description of MyAnimation from **OSA**:
 
 ## Dependencies
 
-* Works on Oldrim. I did not tested it on SSE, but if OSA works, it should to.
+* Works on **Oldrim** and **SSE**
 * **[OSA](https://www.nexusmods.com/skyrim/mods/76744/?tab=description&topic_id=5756447)**
 * At least a mod containing animations using **FNIS**,
 otherwise there is no use to launch the tool.
@@ -119,6 +119,7 @@ even load other plugins to add them to the menu and merge them.
 
 * **Cleanup** button is removing folders with 0 child. If a folder has only
 one child, the child replace the folder.
+
 
 
 ## Usage In-Game
@@ -243,7 +244,33 @@ It will automatically generate a new one.
 To do so, go to **[ISSUES](https://github.com/Hyperen0r/OSelector/issues)**, click on _**New Issue**_
 and chose one of the templates. 
 
-##### Q: Why are some names are weird ?
+
+##### Q: Would there be any benefit to using this over the Morra's Poser Pack?
+**A:** Morra's poser pack is a very good poser plugin, with a great number of animations
+and a very good menu. In fact, this kind of plugin is in some way the end goal of the tool.
+However, you may find that some mods have been updated. Unless Morra
+updates his plugin, you will be missing animations. That were the tool comes in handy, since
+you can easily scan the mod folder and register all animations from it. If you wish to
+keep Morra's menu but also adding animations from updated mods, you can do so by following
+this procedure:
+
+* Open PoserModule.xml (from Morra's Poser Pack)
+* Delete the third three lines :
+```
+<global id="PoserModule"/>
+<folderstyle fc="FFFFFF" h="h_bigdot_op" th="1.5" b="" lc="FFFFFF" h="!" sh="sq" sth="3" sb="000000" slc="!"/>
+<entrystyle fc="FFFFFF" h="h_bigdot_op" th="1.5" b="" lc="FFFFFF" h="!" sh="ci" sth="3" sb="e86570" slc="FFFFFF"/>	
+```
+* Rename the file "PoserModule.myo"
+* Launch the tool
+* Load the file "PoserModule.myo"
+* Then scan any folder you want, like one of the updated mod
+* When asked, choose __"Append"__, and __"Ignore"__
+* New animations will be added, now you can merge the new ones with Morra's Poser pack.
+* Once finished, clicked __"Generate Plugin"__
+* Since a new plugin is generated, you should deactivate Morra's Poser Pack
+
+##### Q: Why are some names weird ?
 **A:** The Tool is supposed to handle all kind of animations using FNIS. But not every modders
 follow the same naming guidelines. So to be the most accurate the tool is dependant of
 the three following names:
@@ -276,8 +303,7 @@ to help you setup your environment.
 
  - [ ] Menu entry is duplicated. Sometimes after closing and reopening, all menu entries are
  duplicated (even the one not generated with the tool)
- - [ ] When using the **"Merge"** action from the context menu, the application crashes when
- selecting items from multiple levels.
+ 
 
 ## Thanks
 
