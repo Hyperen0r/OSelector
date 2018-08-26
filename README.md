@@ -225,7 +225,7 @@ It will automatically generate a new one.
 *Explicit*
 >**enabled** = True
 
-*Print log only if it at least the specified level*
+*Print logs only if it is at least the specified level*
 >**level** = DEBUG or INFO or WARNING or ERROR or CRITICAL
 
 
