@@ -268,7 +268,7 @@ this procedure:
 * When asked, choose __"Append"__, and __"Yes"__ (to ignore already existing animations, so you don't have duplicates)
 * New animations will be added, now you can merge the new ones with Morra's Poser pack.
 * If there are empty folders (like a "Set X" without child), click multiple times on the
-__"Cleanup"__ button so they are removed.
+__"Cleanup"__ button, until there is no more.
 * Once finished, clicked __"Generate Plugin"__
 * Since a new plugin is generated, you should deactivate Morra's Poser Pack
 
